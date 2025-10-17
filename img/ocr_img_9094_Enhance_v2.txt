@@ -1,0 +1,87 @@
+"output": {
+    "ocrResult": {
+      "statusCode": 200,
+      "endpointUsed": "https://agm-first-ocr.cognitiveservices.azure.com/computervision/imageanalysis:analyze?api-version=2023-10-01&features=read",
+      "ocrRaw": {
+        "modelVersion": "2023-10-01",
+        "metadata": {
+          "width": 4032,
+          "height": 2268
+        },
+        "readResult": {
+          "blocks": [
+            {
+              "lines": [
+                {
+                  "text": "L 19119344",
+                  "boundingPolygon": [
+                    {
+                      "x": 1468,
+                      "y": 473
+                    },
+                    {
+                      "x": 2435,
+                      "y": 473
+                    },
+                    {
+                      "x": 2436,
+                      "y": 650
+                    },
+                    {
+                      "x": 1468,
+                      "y": 654
+                    }
+                  ],
+                  "words": [
+                    {
+                      "text": "L",
+                      "boundingPolygon": [
+                        {
+                          "x": 1482,
+                          "y": 474
+                        },
+                        {
+                          "x": 1564,
+                          "y": 474
+                        },
+                        {
+                          "x": 1560,
+                          "y": 652
+                        },
+                        {
+                          "x": 1479,
+                          "y": 655
+                        }
+                      ],
+                      "confidence": 0.588
+                    },
+                    {
+                      "text": "19119344",
+                      "boundingPolygon": [
+                        {
+                          "x": 1650,
+                          "y": 475
+                        },
+                        {
+                          "x": 2423,
+                          "y": 489
+                        },
+                        {
+                          "x": 2420,
+                          "y": 636
+                        },
+                        {
+                          "x": 1647,
+                          "y": 646
+                        }
+                      ],
+                      "confidence": 0.657
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },

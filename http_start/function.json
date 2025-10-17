@@ -1,0 +1,15 @@
+{
+  "bindings": [
+    {
+      "authLevel": "function",
+      "type": "httpTrigger",
+      "direction": "in",
+      "name": "req",
+      "methods": ["post"],
+      "route": "process"
+    },
+    { "type": "http", "direction": "out", "name": "$return" },
+    { "type": "orchestrationClient", "direction": "in", "name": "starter" }
+  ],
+  "scriptFile": "__init__.py"
+}
