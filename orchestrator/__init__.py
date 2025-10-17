@@ -8,7 +8,7 @@ def orchestrator_function(context: df.DurableOrchestrationContext):
     ref_in = context.get_input()
 
     ref_focus = yield context.call_activity("enhance_focus", ref_in)
-    ref_cb    = yield context.call_activity("adjust_contrast_brightness", ref_focus)  # sin params extra
+    ref_cb    = yield context.call_activity("adjust_contrast_brightness", ref_focus)
     ref_bw    = yield context.call_activity("to_grayscale", ref_cb)
     ocr_out   = yield context.call_activity("run_ocr", ref_bw)
 
