@@ -1,0 +1,1 @@
+No hacer público porque tiene keys de azure en doc/docAzure.md
