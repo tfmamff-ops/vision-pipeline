@@ -7,7 +7,7 @@ AZURE_OCR_KEY = os.environ["AZURE_OCR_KEY"]
 def main(ref: dict) -> dict:
     raw = download_bytes(ref["container"], ref["blobName"])
 
-    # Copia final a output/ (lo que tu front mostrará/descargará)
+    # Copia final a output/final/<uuid>.png
     out_name = f"final/{uuid.uuid4()}.png"
     upload_bytes("output", out_name, raw, "image/png")
 

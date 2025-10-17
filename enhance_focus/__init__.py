@@ -54,7 +54,7 @@ def main(ref: dict) -> dict:
     out_bgr = cv2.cvtColor(merged_lab, cv2.COLOR_LAB2BGR)
 
     # 7) Guardar resultado en work/focus/<uuid>.png
-    ok, buffer = cv2.imencode(".png", out_bgr)
+    _, buffer = cv2.imencode(".png", out_bgr)
     out_name = f"focus/{uuid.uuid4()}.png"
     upload_bytes("work", out_name, buffer.tobytes(), content_type="image/png")
 

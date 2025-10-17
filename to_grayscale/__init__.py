@@ -17,7 +17,6 @@ def main(ref: dict) -> dict:
     if gray is None:
         raise RuntimeError("Could not decode image from input blob")
 
-    # El resto del proceso es el mismo
     ok, buf = cv2.imencode(".png", gray)
     if not ok:
         raise RuntimeError("Failed to encode PNG")

@@ -1,1 +1,1 @@
-No hacer público porque tiene keys de azure en doc/docAzure.md
+:no_entry: **WARNING: This repository CANNOT BE PUBLIC because it compromises AZURE keys.**

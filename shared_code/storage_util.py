@@ -1,4 +1,3 @@
-# shared_code/storage_util.py
 import os
 from azure.storage.blob import BlobServiceClient, ContentSettings
 
