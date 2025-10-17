@@ -507,7 +507,7 @@ async def main(req: func.HttpRequest, starter: str) -> func.HttpResponse:
 }
 ```
 
-### Probar localmente
+### Probar localmente (Ojo que ahora que uso un blob no puedo probar localmente porque no lo tengo)
 
 1. Activar el entorno virtual:
 

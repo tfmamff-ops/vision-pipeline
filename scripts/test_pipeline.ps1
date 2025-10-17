@@ -1,7 +1,7 @@
 # ====== VARIABLES ======
 $RG   = "rg-vision-pipeline"
 $APP  = "func-vision-pipeline-agm"
-$FILE = "C:\Alvaro\dev\tfm-dev\azure\vision-pipeline\img\fernando.png"  # <-- TU IMAGEN LOCAL
+$FILE = "C:\Alvaro\OneDrive - UNIR\TFM\brainStorming\codigosBarras\IMG_8938.png"  # <-- TU IMAGEN LOCAL
 
 # Blob name único en input/uploads/
 $ext        = [IO.Path]::GetExtension($FILE)
