@@ -27,9 +27,20 @@ async def main(req: func.HttpRequest, starter: str) -> func.HttpResponse:
         logging.info("[http_start] container=%s, blobName=%s, expectedData=%s", container, blob_name, expected_data)
         
         if container != "input" or not blob_name or not expected_data:
-            return func.HttpResponse("Esperado {container:'input', blobName:'...', expectedData:{...}}", status_code=400)
+            logging.warning("[http_start] Validación fallida - retornando 400")
+            response = func.HttpResponse("Esperado {container:'input', blobName:'...', expectedData:{...}}", status_code=400)
+            logging.info("[http_start] Response status=%s, body=%s", response.status_code, response.get_body().decode('utf-8'))
+            return response
     except Exception as e:
-        return func.HttpResponse(f"JSON inválido: {e}", status_code=400)
+        logging.exception("[http_start] Error procesando JSON - retornando 400")
+        response = func.HttpResponse(f"JSON inválido: {e}", status_code=400)
+        logging.info("[http_start] Response status=%s, body=%s", response.status_code, response.get_body().decode('utf-8'))
+        return response
 
     instance_id = await client.start_new("orchestrator", None, {"container": container, "blobName": blob_name, "expectedData": expected_data})
-    return client.create_check_status_response(req, instance_id)
+    logging.info("[http_start] Orquestador iniciado con instance_id=%s", instance_id)
+    
+    response = client.create_check_status_response(req, instance_id)
+    logging.info("[http_start] Response status=%s", response.status_code)
+    logging.info("[http_start] Response body: %s", response.get_body().decode('utf-8'))
+    return response
