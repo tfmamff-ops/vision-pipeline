@@ -64,7 +64,6 @@ def _no_barcode():
         "barcodeBox": None,
         "barcodeOverlayBlob": None,
         "barcodeRoiBlob": None,
-        "barcodeQualityScore": None
     }
 
 def main(ref: dict) -> dict:
@@ -79,7 +78,6 @@ def main(ref: dict) -> dict:
         "barcodeBox": [x,y,w,h] | None,
         "barcodeOverlayBlob": {"container":"output","blobName":"barcode/overlay/<uuid>.png"} | None,
         "barcodeRoiBlob": {"container":"output","blobName":"barcode/roi/<uuid>.png"} | None,
-        "barcodeQualityScore": None
       }
     """
     try:
@@ -160,7 +158,6 @@ def main(ref: dict) -> dict:
             "barcodeBox": [x, y, bw, bh],
             "barcodeOverlayBlob": {"container": "output", "blobName": overlay_blob},
             "barcodeRoiBlob": {"container": "output", "blobName": roi_blob},
-            "barcodeQualityScore": None
         }
         logging.info("[analyze_barcode] done ok")
         return out
