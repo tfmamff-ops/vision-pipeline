@@ -57,11 +57,13 @@ def _png_bytes(img_bgr: np.ndarray) -> bytes:
 
 def _no_barcode():
     return {
-        "barcodeDetected": False,
-        "barcodeLegible": False,
-        "decodedValue": None,
-        "barcodeSymbology": None,
-        "barcodeBox": None,
+        "barcodeData": {
+            "barcodeDetected": False,
+            "barcodeLegible": False,
+            "decodedValue": None,
+            "barcodeSymbology": None,
+            "barcodeBox": None,
+        },
         "barcodeOverlayBlob": None,
         "barcodeRoiBlob": None,
     }
@@ -71,11 +73,13 @@ def main(ref: dict) -> dict:
     Input esperado: {"container": "...", "blobName": "..."}  (salida de to_grayscale)
     Output:
       {
-        "barcodeDetected": bool,
-        "barcodeLegible": bool,
-        "decodedValue": str | None,
-        "barcodeSymbology": str | None,
-        "barcodeBox": [x,y,w,h] | None,
+        "barcodeData": {
+            "barcodeDetected": bool,
+            "barcodeLegible": bool,
+            "decodedValue": str | None,
+            "barcodeSymbology": str | None,
+            "barcodeBox": [x,y,w,h] | None,
+        },  
         "barcodeOverlayBlob": {"container":"output","blobName":"barcode/overlay/<uuid>.png"} | None,
         "barcodeRoiBlob": {"container":"output","blobName":"barcode/roi/<uuid>.png"} | None,
       }
@@ -151,11 +155,13 @@ def main(ref: dict) -> dict:
 
         # 8) Armar salida
         out = {
-            "barcodeDetected": True,
-            "barcodeLegible": bool(decoded_value),               # legible si hay texto
-            "decodedValue": decoded_value,
-            "barcodeSymbology": symbology,
-            "barcodeBox": [x, y, bw, bh],
+            "barcodeData": {
+                "barcodeDetected": True,
+                "barcodeLegible": bool(decoded_value),               # legible si hay texto
+                "decodedValue": decoded_value,
+                "barcodeSymbology": symbology,
+                "barcodeBox": [x, y, bw, bh],
+            },
             "barcodeOverlayBlob": {"container": "output", "blobName": overlay_blob},
             "barcodeRoiBlob": {"container": "output", "blobName": roi_blob},
         }
