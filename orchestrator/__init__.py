@@ -3,7 +3,7 @@ import azure.durable_functions as df
 def orchestrator_function(context: df.DurableOrchestrationContext):
     """
     Input:
-      { "container": "input", "blobName": "uploads/archivo.png" }
+      { "container": "input", "blobName": "uploads/archivo.png", "expectedData": {expiry: '...', batch: '...', order: '...'} }
     """
     ref_in = context.get_input()
 
