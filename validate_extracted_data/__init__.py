@@ -1,5 +1,4 @@
-
-from typing import Dict, Any
+import json
 import logging
 
 def _safe_upper(s: str) -> str:
@@ -9,7 +8,7 @@ def _norm_no_spaces(s: str) -> str:
     # Upper + remove all whitespace for robust matching against OCR variations
     return "".join(_safe_upper(s).split())
 
-def _extract_ocr_text(ocr_result: Dict[str, Any]) -> Dict[str, str]:
+def _extract_ocr_text(ocr_result: dict) -> dict:
     """
     Flattens OCR result into two strings:
     - full: all line texts joined with spaces (UPPERCASED)
@@ -47,7 +46,7 @@ def _contains_robust(hay_full: str, hay_full_ns: str, needle: str) -> bool:
     logging.debug("[validate_extracted_data] Search '%s' in OCR: %s", needle, found)
     return found
 
-def main(payload: Dict[str, Any]) -> Dict[str, Any]:
+def main(payload: dict) -> dict:
     """
     Validates OCR and barcode results against expected data.
     
@@ -59,8 +58,8 @@ def main(payload: Dict[str, Any]) -> Dict[str, Any]:
     }
     """
     logging.info("[validate_extracted_data] Starting validation")
-    logging.debug("[validate_extracted_data] Payload keys: %s", list(payload.keys()))
-    
+    logging.info("[validate_extracted_data] Payload (json): %s", json.dumps(payload, indent=2, ensure_ascii=False))
+
     # Extract data from payload (compatible with orchestrator output)
     ocr_result = payload.get("ocr") or {}
     barcode = payload.get("barcode") or {}
