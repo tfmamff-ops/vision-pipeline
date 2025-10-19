@@ -53,18 +53,18 @@ def main(payload: Dict[str, Any]) -> Dict[str, Any]:
     
     Expected payload structure from orchestrator:
     {
-      "ocrResult": {...},
+      "ocr": {...},
       "barcode": {"barcodeData": {...}},
-      "expectedData": {"order": "...", "batch": "...", "expiry": "..."}
+      "expected": {"order": "...", "batch": "...", "expiry": "..."}
     }
     """
     logging.info("[validate_extracted_data] Starting validation")
     logging.debug("[validate_extracted_data] Payload keys: %s", list(payload.keys()))
     
     # Extract data from payload (compatible with orchestrator output)
-    ocr_result = payload.get("ocrResult") or {}
+    ocr_result = payload.get("ocr") or {}
     barcode = payload.get("barcode") or {}
-    expected_data = payload.get("expectedData") or {}
+    expected_data = payload.get("expected") or {}
     
     # Extract OCR text surfaces
     ocr_text = _extract_ocr_text(ocr_result)
