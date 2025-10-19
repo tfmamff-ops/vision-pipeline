@@ -104,15 +104,13 @@ def main(payload: dict) -> dict:
     validation_summary = all([order_ok, batch_ok, expiry_ok, barcode_ok])
     
     result = {
-        "validation": {
-            "orderOK": order_ok,
-            "batchOK": batch_ok,
-            "expiryOK": expiry_ok,
-            "barcodeDetectedOK": barcode_detected_ok,
-            "barcodeLegibleOK": barcode_legible_ok,
-            "barcodeOK": barcode_ok,
-            "validationSummary": validation_summary
-        }
+        "orderOK": order_ok,
+        "batchOK": batch_ok,
+        "expiryOK": expiry_ok,
+        "barcodeDetectedOK": barcode_detected_ok,
+        "barcodeLegibleOK": barcode_legible_ok,
+        "barcodeOK": barcode_ok,
+        "validationSummary": validation_summary
     }
     
     logging.info("[validate_extracted_data] Validation complete: summary=%s", validation_summary)
