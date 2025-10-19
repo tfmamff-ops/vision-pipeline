@@ -42,5 +42,6 @@ async def main(req: func.HttpRequest, starter: str) -> func.HttpResponse:
     
     response = client.create_check_status_response(req, instance_id)
     logging.info("[http_start] Response status=%s", response.status_code)
-    logging.info("[http_start] Response body: %s", response.get_body().decode('utf-8'))
+    logging.info("[http_start] Response body (raw): %s", response.get_body().decode('utf-8'))
+    logging.info("[http_start] Parsed JSON (Response body): %s", json.dumps(response.get_body().decode('utf-8'), indent=2, ensure_ascii=False))
     return response
