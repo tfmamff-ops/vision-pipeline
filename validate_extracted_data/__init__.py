@@ -61,7 +61,8 @@ def main(payload: dict) -> dict:
     logging.info("[validate_extracted_data] Payload (json): %s", json.dumps(payload, indent=2, ensure_ascii=False))
 
     # Extract data from payload (compatible with orchestrator output)
-    ocr_result = payload.get("ocr") or {}
+    ocr_container = payload.get("ocr") or {}
+    ocr_result = ocr_container.get("ocrResult") or {}
     barcode = payload.get("barcode") or {}
     expected_data = payload.get("expected") or {}
     
