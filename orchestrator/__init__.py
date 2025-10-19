@@ -28,6 +28,7 @@ def orchestrator_function(context: df.DurableOrchestrationContext):
     return {
         "ocrResult": ocr_out["ocrResult"],
         "processedImageBlob": ocr_out["outputBlob"],
+        "ocrOverlayBlob": ocr_out.get("overlayBlob"),
         "barcode": bc_out,
         "validation": val_out
     }
