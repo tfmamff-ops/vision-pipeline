@@ -1,9 +1,9 @@
 # ====== VARIABLES ======
 $RG   = "rg-vision-pipeline"
 $APP  = "func-vision-pipeline-agm"
-$FILE = "C:\Alvaro\OneDrive - UNIR\TFM\brainStorming\codigosBarras\IMG_8938.png"  # <-- TU IMAGEN LOCAL
+$FILE = "C:\Alvaro\OneDrive - UNIR\TFM\brainStorming\codigosBarras\IMG_8938.png"  # <-- YOUR LOCAL IMAGE
 
-# Blob name único en input/uploads/
+# Unique blob name under input/uploads/
 $ext        = [IO.Path]::GetExtension($FILE)
 $guid       = [guid]::NewGuid().ToString()
 $BLOB_NAME  = "uploads/$guid$ext"
@@ -24,10 +24,10 @@ $uploadResp = Invoke-RestMethod -Method POST `
   -Body $uploadReq
 
 $sasUploadUrl = $uploadResp.sasUrl
-if (-not $sasUploadUrl) { throw "No se obtuvo SAS de upload." }
+if (-not $sasUploadUrl) { throw "Upload SAS was not obtained." }
 
 # ====== 2) SUBIR ARCHIVO LOCAL AL BLOB ======
-# Nota: en PowerShell, 'curl' es alias de Invoke-WebRequest. Usamos Invoke-WebRequest explícitamente.
+# Note: In PowerShell, 'curl' is an alias for Invoke-WebRequest. We use Invoke-WebRequest explicitly.
 Invoke-WebRequest -Method Put -Uri $sasUploadUrl -InFile $FILE -Headers @{ "x-ms-blob-type" = "BlockBlob" } | Out-Null
 
 # ====== 3) INICIAR EL PIPELINE (http_start) CON LA REFERENCIA AL BLOB ======
@@ -43,10 +43,10 @@ $startResp = Invoke-RestMethod -Method POST `
   -Body $startReq
 
 $statusUrl = $startResp.statusQueryGetUri
-if (-not $statusUrl) { throw "No se obtuvo statusQueryGetUri del starter." }
+if (-not $statusUrl) { throw "statusQueryGetUri was not obtained from the starter." }
 
 # ====== 4) POLL HASTA COMPLETAR ======
-Write-Host "Procesando (polling Durable Functions) ..."
+Write-Host "Processing (polling Durable Functions) ..."
 do {
   Start-Sleep -Seconds 2
   $statusResp = Invoke-RestMethod -Method GET -Uri $statusUrl
@@ -56,16 +56,16 @@ do {
 
 if ($rt -ne "Completed") {
   $statusResp | ConvertTo-Json -Depth 20 | Out-File .\durable_status_error.json -Encoding utf8
-  throw "Pipeline no completó. Revisá durable_status_error.json"
+  throw "Pipeline did not complete. Check durable_status_error.json"
 }
 
 # ====== 5) EXTRAER RESULTADO (blob final + OCR) ======
 $outBlob = $statusResp.output.processedImageBlob.blobName
-if (-not $outBlob) { throw "No se encontró processedImageBlob en la salida." }
+if (-not $outBlob) { throw "processedImageBlob was not found in the output." }
 
-# Guardar OCR a archivo (opcional)
+# Save OCR to file (optional)
 $statusResp.output.ocrResult | ConvertTo-Json -Depth 20 | Out-File .\ocrResult.json -Encoding utf8
-Write-Host "OCR guardado en ocrResult.json"
+Write-Host "OCR saved to ocrResult.json"
 
 # ====== 6) GENERAR SAS DE LECTURA PARA VER EL RESULTADO FINAL ======
 $readReq = @{
@@ -81,10 +81,10 @@ $readResp = Invoke-RestMethod -Method POST `
   -Body $readReq
 
 $readUrl = $readResp.sasUrl
-if (-not $readUrl) { throw "No se obtuvo SAS de lectura del resultado." }
+if (-not $readUrl) { throw "Read SAS for the result was not obtained." }
 
-Write-Host "Resultado final (abrir en navegador): $readUrl"
-Start-Process $readUrl   # abre la imagen final en el navegador
+Write-Host "Final result (open in browser): $readUrl"
+Start-Process $readUrl   # opens the final image in the browser
 
-# (Opcional) Descargar el resultado a disco:
+# (Optional) Download the result to disk:
 # Invoke-WebRequest -Uri $readUrl -OutFile ".\resultado_final.png"

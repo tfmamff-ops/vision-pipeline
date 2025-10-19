@@ -1,16 +1,16 @@
-# update.ps1  (guardar en vision-pipeline\script\update.ps1)
+# update.ps1  (save in vision-pipeline\scripts\update.ps1)
 
-# Ir a la raíz del proyecto (sube un nivel desde /script)
+# Go to the project root (one level up from /scripts)
 Set-Location (Join-Path $PSScriptRoot '..')
 
-# Activar entorno virtual
+# Activate virtual environment
 . .\.venv\Scripts\Activate.ps1
 
 # Variables
 $APP = "func-vision-pipeline-agm"
 $RG  = "rg-vision-pipeline"
 
-# Login solo si no hay sesión activa
+# Login only if there is no active session
 try {
     az account show | Out-Null
     Write-Host "==> Sesión de Azure ya activa." -ForegroundColor Green
@@ -19,14 +19,14 @@ try {
     az login | Out-Null
 }
 
-# Verificar que exista la Function App
+# Verify that the Function App exists
 az functionapp show -g $RG -n $APP | Out-Null
 
-# Actualizar dependencias
+# Update dependencies
 pip install -r .\requirements.txt
 pip freeze > .\requirements.txt
 
-# (Opcional) actualizar variables de entorno
+# (Optional) update environment variables
 # az functionapp config appsettings set `
 #   --name $APP `
 #   --resource-group $RG `
@@ -34,5 +34,5 @@ pip freeze > .\requirements.txt
 #   AZURE_XX="https://x.com/" `
 #   AZURE_YY="123.3"
 
-# Publicar (build remoto; no sube local.settings.json)
+# Publish (remote build; does not upload local.settings.json)
 func azure functionapp publish $APP --build remote --python
