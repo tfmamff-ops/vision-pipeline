@@ -42,6 +42,17 @@ async def main(req: func.HttpRequest, starter: str) -> func.HttpResponse:
     
     response = client.create_check_status_response(req, instance_id)
     logging.info("[http_start] Response status=%s", response.status_code)
-    logging.info("[http_start] Response body (raw): %s", response.get_body().decode('utf-8'))
-    logging.info("[http_start] Parsed JSON (Response body): %s", json.dumps(response.get_body().decode('utf-8'), indent=2, ensure_ascii=False))
+
+    # Read body once
+    _body_bytes = response.get_body()
+    _body_text = _body_bytes.decode('utf-8') if isinstance(_body_bytes, (bytes, bytearray)) else str(_body_bytes)
+    logging.info("[http_start] Response body (raw): %s", _body_text)
+
+    # Pretty-print JSON if valid
+    try:
+        _body_json = json.loads(_body_text)
+        logging.info("[http_start] Response body (json): %s", json.dumps(_body_json, indent=2, ensure_ascii=False))
+    except Exception as e:
+        # Not JSON; keep raw only
+        logging.debug("[http_start] Response body is not valid JSON: %s", e)
     return response
