@@ -532,7 +532,7 @@ El resultado mostrará un JSON con una URL de estado (`statusQueryGetUri`).
 Abrí esa URL en el navegador (o se puede usar curl) para verificar el progreso del orquestador y ver el resultado final.
 
 ```json
-{"id": "283356d8bd604eeba8d12c012d28fd68", "statusQueryGetUri": "http://localhost:7071/runtime/webhooks/durabletask/instances/283356d8bd604eeba8d12c012d28fd68?taskHub=TestHubName&connection=Storage&code=pV7UsyY5ZowC6mg3jakwpOiVMoM6zotJJdwVa8iV6meYAzFuuDTR4w==", "sendEventPostUri": "http://localhost:7071/runtime/webhooks/durabletask/instances/283356d8bd604eeba8d12c012d28fd68/raiseEvent/{eventName}?taskHub=TestHubName&connection=Storage&code=pV7UsyY5ZowC6mg3jakwpOiVMoM6zotJJdwVa8iV6meYAzFuuDTR4w==", "terminatePostUri": "http://localhost:7071/runtime/webhooks/durabletask/instances/283356d8bd604eeba8d12c012d28fd68/terminate?reason={text}&taskHub=TestHubName&connection=Storage&code=pV7UsyY5ZowC6mg3jakwpOiVMoM6zotJJdwVa8iV6meYAzFuuDTR4w==", "rewindPostUri": "http://localhost:7071/runtime/webhooks/durabletask/instances/283356d8bd604eeba8d12c012d28fd68/rewind?reason={text}&taskHub=TestHubName&connection=Storage&code=pV7UsyY5ZowC6mg3jakwpOiVMoM6zotJJdwVa8iV6meYAzFuuDTR4w==", "purgeHistoryDeleteUri": "http://localhost:7071/runtime/webhooks/durabletask/instances/283356d8bd604eeba8d12c012d28fd68?taskHub=TestHubName&connection=Storage&code=pV7UsyY5ZowC6mg3jakwpOiVMoM6zotJJdwVa8iV6meYAzFuuDTR4w==", "restartPostUri": "http://localhost:7071/runtime/webhooks/durabletask/instances/283356d8bd604eeba8d12c012d28fd68/restart?taskHub=TestHubName&connection=Storage&code=pV7UsyY5ZowC6mg3jakwpOiVMoM6zotJJdwVa8iV6meYAzFuuDTR4w==", "suspendPostUri": "http://localhost:7071/runtime/webhooks/durabletask/instances/283356d8bd604eeba8d12c012d28fd68/suspend?reason={text}&taskHub=TestHubName&connection=Storage&code=pV7UsyY5ZowC6mg3jakwpOiVMoM6zotJJdwVa8iV6meYAzFuuDTR4w==", "resumePostUri": "http://localhost:7071/runtime/webhooks/durabletask/instances/283356d8bd604eeba8d12c012d28fd68/resume?reason={text}&taskHub=TestHubName&connection=Storage&code=pV7UsyY5ZowC6mg3jakwpOiVMoM6zotJJdwVa8iV6meYAzFuuDTR4w=="}
+{"id": "283356d8bd604eeba8d12c012d28fd68", "statusQueryGetUri": "http://localhost:7071/runtime/webhooks/durabletask/instances/283356d8bd604eeba8d12c012d28fd68?taskHub=TestHubName&connection=Storage&code=<REDACTED>", "sendEventPostUri": "http://localhost:7071/runtime/webhooks/durabletask/instances/283356d8bd604eeba8d12c012d28fd68/raiseEvent/{eventName}?taskHub=TestHubName&connection=Storage&code=<REDACTED>", "terminatePostUri": "http://localhost:7071/runtime/webhooks/durabletask/instances/283356d8bd604eeba8d12c012d28fd68/terminate?reason={text}&taskHub=TestHubName&connection=Storage&code=<REDACTED>"}
 ```
 
 Para transformar base64 a imagen podés usar este sitio: [codebeautify.org/base64-to-image-converter](https://codebeautify.org/base64-to-image-converter)
@@ -715,7 +715,9 @@ Cómo identificar tu Storage Account (rápido)
 Entrá a tu Function App (ej: func-vision-pipeline-agm).
 Luego Settings -> Environment variables: AzureWebJobsStorage
 
-DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=stvision109330379;AccountKey=RoD7FOl2OnIntuEb2FaTtgxuMKcgiVtdyqLL14A3rnFNLORXdwE+conpFAJajWI+j1yIaAfutbes+AStVcTsAQ==
+```
+DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=stvision109330379;AccountKey=<YOUR_STORAGE_ACCOUNT_KEY>
+```
 
 De ahí obtengo: AccountName=stvision109330379.
 
@@ -938,7 +940,7 @@ curl -X POST -H "x-functions-key: $KEY" -H "Content-Type: application/json" -d $
 La respuesta es:
 
 ```powershell
-{"sasUrl": "https://stvision109330379.blob.core.windows.net/input/uploads/test-01.png?se=2025-10-16T18%3A53%3A59Z&sp=cw&sv=2025-11-05&sr=b&rsct=image/png&sig=aL3qF1scqES/kEHlOmIZ8Vh5FTF9awQqcKFo8Ri1QMM%3D"}
+{"sasUrl": "https://stvision109330379.blob.core.windows.net/input/uploads/test-01.png?se=2025-10-16T18%3A53%3A59Z&sp=cw&sv=2025-11-05&sr=b&rsct=image/png&sig=<REDACTED>"}
 ```
 
 Subir el archivo usando la SAS URL
@@ -951,7 +953,8 @@ curl -X PUT -H "x-ms-blob-type: BlockBlob" --data-binary "@C:\ruta\a\tu\imagen.p
 
 En mi caso sería esto:
 
-curl -X PUT -H "x-ms-blob-type: BlockBlob" --data-binary "@C:\Alvaro\dev\tfm-dev\azure\vision-pipeline\img\samplePicture.png" "https://stvision109330379.blob.core.windows.net/input/uploads/test-01.png?se=2025-10-16T18%3A53%3A59Z&sp=cw&sv=2025-11-05&sr=b&rsct=image/png&sig=aL3qF1scqES/kEHlOmIZ8Vh5FTF9awQqcKFo8Ri1QMM%3D"
+curl -X PUT -H "x-ms-blob-type: BlockBlob" --data-binary "@C:\Alvaro\dev\tfm-dev\azure\vision-pipeline\img\samplePicture.png" "https://stvision109330379.blob.core.windows.net/input/uploads/test-01.png?se=2025-10-16T18%3A53%3A59Z&sp=cw&sv=2025-11-05&sr=b&rsct=image/png&sig=<REDACTED>"
+
 
 
 Si devuelve 201 Created, quedó subido en input/uploads/test-01.png.

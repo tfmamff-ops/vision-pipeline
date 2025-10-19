@@ -1,1 +1,0 @@
-:no_entry: **WARNING: This repository CANNOT BE PUBLIC because it compromises AZURE keys.**
