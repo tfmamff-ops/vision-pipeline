@@ -90,5 +90,5 @@ def main(ref: dict) -> dict:
     return {
         "ocrResult": data,
         "outputBlob": {"container": "output", "blobName": out_name},
-        "overlayBlob": {"container": "output", "blobName": overlay_blob}
+        "overlayBlob": overlay_blob
     }
