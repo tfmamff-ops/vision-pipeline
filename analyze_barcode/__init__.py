@@ -8,16 +8,16 @@ from shared_code.storage_util import download_bytes, upload_bytes
 
 def _np_from_image_bytes(img_bytes: bytes) -> np.ndarray:
     arr = np.frombuffer(img_bytes, dtype=np.uint8)
-    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)  # siempre BGR (3 canales)
+    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)  # always BGR (3 channels)
     return img
 
 def _extract_xy(p):
     """
-    Devuelve (x, y) a partir de:
-      - objetos con atributos .x / .y (p.ej. zxingcpp.Point)
-      - dicts con keys 'x'/'y'
-      - tuplas/listas (x, y)
-    Lanza ValueError si no puede extraer coordenadas.
+    Returns (x, y) from:
+      - objects with attributes .x / .y (e.g., zxingcpp.Point)
+      - dicts with keys 'x'/'y'
+      - tuples/lists (x, y)
+    Raises ValueError if coordinates cannot be extracted.
     """
     if hasattr(p, "x") and hasattr(p, "y"):
         return float(p.x), float(p.y)
@@ -25,12 +25,12 @@ def _extract_xy(p):
         return float(p["x"]), float(p["y"])
     if isinstance(p, (tuple, list)) and len(p) == 2:
         return float(p[0]), float(p[1])
-    raise ValueError("corner sin x/y")
+    raise ValueError("corner without x/y")
 
 def _bbox_from_corners(corners):
     """
-    corners: iterable de 4 puntos (objeto con .x, .y, dict-like o (x,y)).
-    Devuelve bbox [x, y, w, h] con ints, asegurando top-left origin.
+    corners: iterable of 4 points (object with .x, .y, dict-like, or (x,y)).
+    Returns bbox [x, y, w, h] as ints, ensuring top-left origin.
     """
     xs, ys = [], []
     for p in corners:
@@ -70,7 +70,7 @@ def _no_barcode():
 
 def main(ref: dict) -> dict:
     """
-    Input esperado: {"container": "...", "blobName": "..."}  (salida de to_grayscale)
+    Expected input: {"container": "...", "blobName": "..."} (output from to_grayscale)
     Output:
       {
         "barcodeData": {
@@ -87,17 +87,17 @@ def main(ref: dict) -> dict:
     try:
         logging.info("[analyze_barcode] start ref=%s", ref)
 
-        # 1) Descargar imagen bn (post to_grayscale)
+        # 1) Download grayscale image (post to_grayscale)
         img_bytes = download_bytes(ref["container"], ref["blobName"])
         logging.info("[analyze_barcode] downloaded bytes=%d", len(img_bytes))
 
         img = _np_from_image_bytes(img_bytes)
         if img is None:
-            logging.error("[analyze_barcode] imdecode devolvió None")
+            logging.error("[analyze_barcode] imdecode returned None")
             return _no_barcode()
         logging.info("[analyze_barcode] img shape=%s dtype=%s", getattr(img, "shape", None), getattr(img, "dtype", None))
 
-        # 2) Pasar a gray para ZXing (suele mejorar 1D) + asegurar uint8 contiguo
+        # 2) Convert to grayscale for ZXing (usually better for 1D) + ensure contiguous uint8 array
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         if gray.dtype != np.uint8:
             gray = gray.astype(np.uint8)
@@ -105,28 +105,28 @@ def main(ref: dict) -> dict:
             gray = np.ascontiguousarray(gray)
         logging.info("[analyze_barcode] gray shape=%s contiguous=%s", getattr(gray, "shape", None), gray.flags['C_CONTIGUOUS'])
 
-        # 3) Leer códigos con ZXing
+        # 3) Read barcodes with ZXing
         results = zxingcpp.read_barcodes(gray)
         logging.info("[analyze_barcode] zxing results count=%d", len(results) if results is not None else -1)
         if not results:
-            # No hay detección
+            # No detection
             logging.info("[analyze_barcode] no barcode detected")
             return _no_barcode()
 
-        # 4) Tomar el primero (simple)
+        # 4) Take the first one (simple case)
         r = results[0]
         decoded_value = r.text if getattr(r, "text", None) else None
         symbology = r.format.name if getattr(r, "format", None) else None
 
-        # zxingcpp.Position no es iterable; extraer corners explícitos
+        # zxingcpp.Position is not iterable; extract corners explicitly
         pos = getattr(r, "position", None)
         corners = None
         if pos is not None:
-            # Los atributos esperados son top_left, top_right, bottom_right, bottom_left
+            # Expected attributes: top_left, top_right, bottom_right, bottom_left
             corners = [pos.top_left, pos.top_right, pos.bottom_right, pos.bottom_left]
         logging.info("[analyze_barcode] decoded='%s' symbology=%s corners_ok=%s", decoded_value, symbology, corners is not None)
 
-        # Si por alguna razón no hay corners, estimar con todo el frame
+        # If no corners available, estimate using the full frame
         if corners:
             bbox = _bbox_from_corners(corners)
         else:
@@ -137,14 +137,14 @@ def main(ref: dict) -> dict:
         x, y, bw, bh = _clamp_bbox_to_image(bbox, w, h)
         logging.info("[analyze_barcode] bbox=%s", (x, y, bw, bh))
 
-        # 5) Crear overlay (rectángulo dibujado)
+        # 5) Create overlay (rectangle drawn)
         overlay = img.copy()
         cv2.rectangle(overlay, (x, y), (x + bw, y + bh), (0, 255, 0), thickness=2)
 
-        # 6) Crear ROI (recorte)
+        # 6) Create ROI (crop)
         roi = img[y:y + bh, x:x + bw]
 
-        # 7) Subir ambos blobs
+        # 7) Upload both blobs
         uid = str(uuid.uuid4())
         overlay_blob = f"barcode/overlay/{uid}.png"
         roi_blob = f"barcode/roi/{uid}.png"
@@ -153,11 +153,11 @@ def main(ref: dict) -> dict:
         upload_bytes("output", roi_blob, _png_bytes(roi), "image/png")
         logging.info("[analyze_barcode] uploaded overlay=%s roi=%s", overlay_blob, roi_blob)
 
-        # 8) Armar salida
+        # 8) Build output
         out = {
             "barcodeData": {
                 "barcodeDetected": True,
-                "barcodeLegible": bool(decoded_value),               # legible si hay texto
+                "barcodeLegible": bool(decoded_value),               # legible if text exists
                 "decodedValue": decoded_value,
                 "barcodeSymbology": symbology,
                 "barcodeBox": [x, y, bw, bh],

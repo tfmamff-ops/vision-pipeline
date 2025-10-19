@@ -5,15 +5,15 @@ from shared_code.storage_util import download_bytes, upload_bytes
 
 def main(ref: dict) -> dict:
     """
-    Convierte una imagen a escala de grises de forma eficiente.
+    Efficiently converts an image to grayscale.
     """
     raw = download_bytes(ref["container"], ref["blobName"])
 
-    # Decodificamos la imagen directamente a escala de grises usando el flag
-    # cv2.IMREAD_GRAYSCALE. Esto es más rápido y usa menos memoria.
+    # Decode the image directly to grayscale using the flag
+    # cv2.IMREAD_GRAYSCALE. This is faster and uses less memory.
     gray = cv2.imdecode(np.frombuffer(raw, np.uint8), cv2.IMREAD_GRAYSCALE)
     
-    # Si la imagen no se pudo decodificar, gray será None.
+    # If the image could not be decoded, gray will be None.
     if gray is None:
         raise RuntimeError("Could not decode image from input blob")
 

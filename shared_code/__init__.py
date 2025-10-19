@@ -1,2 +1,2 @@
 # shared_code/__init__.py
-# Este archivo marca la carpeta como un paquete Python (no requiere contenido).
+# This file marks the folder as a Python package (no content required).

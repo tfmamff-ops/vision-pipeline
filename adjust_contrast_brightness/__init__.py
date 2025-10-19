@@ -4,18 +4,18 @@ import cv2
 import numpy as np
 from shared_code.storage_util import download_bytes, upload_bytes
 
-# clipLimit: Umbral para limitar el contraste. Valores más altos dan más contraste.
-# tileGridSize: Tamaño de la región para el análisis del histograma.
+# clipLimit: Threshold to limit contrast. Higher values give more contrast.
+# tileGridSize: Size of the region for histogram analysis.
 _DEF_CLIP_LIMIT = float(os.getenv("ADJ_CLAHE_CLIP", "2.0"))
 _DEF_TILE_SIZE  = int(os.getenv("ADJ_CLAHE_TILE", "8"))
 
 def _bytes_to_img(b: bytes) -> np.ndarray:
-    """Decodifica un buffer de bytes a una imagen OpenCV."""
+    """Decodes a byte buffer to an OpenCV image."""
     arr = np.frombuffer(b, dtype=np.uint8)
     return cv2.imdecode(arr, cv2.IMREAD_COLOR)
 
 def _img_to_png_bytes(img: np.ndarray) -> bytes:
-    """Codifica una imagen OpenCV a un buffer de bytes en formato PNG."""
+    """Encodes an OpenCV image to a PNG byte buffer."""
     ok, buf = cv2.imencode(".png", img)
     if not ok:
         raise RuntimeError("Failed to encode PNG")
@@ -23,7 +23,7 @@ def _img_to_png_bytes(img: np.ndarray) -> bytes:
 
 def main(ref: dict) -> dict:
     """
-    Mejora el contraste y brillo de una imagen usando CLAHE en el espacio LAB.
+    Enhances image contrast and brightness using CLAHE in LAB color space.
     Input:
       { "container": "...", "blobName": "..." }
     Output:
@@ -34,28 +34,28 @@ def main(ref: dict) -> dict:
     if bgr_img is None:
         raise RuntimeError("Could not decode image from input blob")
 
-    # 1. Convertir la imagen al espacio de color LAB
-    # El canal 'L' representa la Luminosidad (brillo/contraste).
-    # Los canales 'A' y 'B' representan el color.
+    # 1. Convert the image to LAB color space
+    # The 'L' channel represents lightness (brightness/contrast).
+    # The 'A' and 'B' channels represent color.
     lab_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2LAB)
     l_channel, a_channel, b_channel = cv2.split(lab_img)
 
-    # 2. Crear y configurar el objeto CLAHE
-    # Usamos los parámetros definidos para un control más fino.
+    # 2. Create and configure the CLAHE object
+    # Use defined parameters for finer control.
     tile_size = (_DEF_TILE_SIZE, _DEF_TILE_SIZE)
     clahe = cv2.createCLAHE(clipLimit=_DEF_CLIP_LIMIT, tileGridSize=tile_size)
 
-    # 3. Aplicar CLAHE SÓLO al canal de Luminosidad (L)
-    # Esto mejora el contraste local sin distorsionar los colores.
+    # 3. Apply CLAHE ONLY to the lightness (L) channel
+    # This improves local contrast without distorting colors.
     enhanced_l_channel = clahe.apply(l_channel)
 
-    # 4. Unir el canal L mejorado con los canales de color originales
+    # 4. Merge the enhanced L channel with the original color channels
     merged_lab_img = cv2.merge([enhanced_l_channel, a_channel, b_channel])
 
-    # 5. Convertir la imagen de vuelta al espacio BGR
+    # 5. Convert the image back to BGR color space
     adjusted_img = cv2.cvtColor(merged_lab_img, cv2.COLOR_LAB2BGR)
 
-    # 6. Guardar el resultado
+    # 6. Save the result
     out_name = f"contrast/{uuid.uuid4()}.png"
     upload_bytes("work", out_name, _img_to_png_bytes(adjusted_img), "image/png")
 

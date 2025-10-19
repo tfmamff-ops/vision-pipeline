@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from azure.storage.blob import generate_blob_sas, BlobSasPermissions
 
 
-ACCOUNT_URL = os.environ["BLOB_ACCOUNT_URL"]   # p.ej. https://stvision109330379.blob.core.windows.net
+ACCOUNT_URL = os.environ["BLOB_ACCOUNT_URL"]   # e.g., https://stvision109330379.blob.core.windows.net
 ACCOUNT_KEY = os.environ["BLOB_ACCOUNT_KEY"]
 
 def _account_name_from_url(url: str) -> str:
@@ -43,12 +43,12 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse("Invalid JSON body", status_code=400)
 
     container   = data.get("container")   # "input" | "output"
-    blob_name   = data.get("blobName")    # p.ej. "uploads/uuid.png"
+    blob_name   = data.get("blobName")    # e.g., "uploads/uuid.png"
     mode        = (data.get("mode") or "upload").lower()  # "upload" | "read"
     minutes     = int(data.get("minutes") or 10)
-    content_type= data.get("contentType")  # opcional para upload
+    content_type= data.get("contentType")  # optional for upload
 
-    # Política mínima: subir solo a input; leer solo de output.
+    # Minimal policy: only upload to input; only read from output.
     if mode == "upload" and container != "input":
         return func.HttpResponse("Uploads must target the 'input' container.", status_code=400)
     if mode == "read" and container not in ("output",):

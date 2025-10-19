@@ -1,0 +1,11 @@
+{
+  "bindings": [
+    {
+      "type": "activityTrigger",
+      "direction": "in",
+      "name": "payload"
+    }
+  ],
+  "scriptFile": "__init__.py",
+  "entryPoint": "main"
+}

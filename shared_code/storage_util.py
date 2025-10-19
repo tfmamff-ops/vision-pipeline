@@ -1,16 +1,16 @@
 import os
 from azure.storage.blob import BlobServiceClient, ContentSettings
 
-# Lee las credenciales desde app settings (Function App)
-ACCOUNT_URL = os.environ["BLOB_ACCOUNT_URL"]    # p.ej. https://stvision109330379.blob.core.windows.net
+# Reads credentials from app settings (Function App)
+ACCOUNT_URL = os.environ["BLOB_ACCOUNT_URL"]    # e.g., https://stvision109330379.blob.core.windows.net
 ACCOUNT_KEY = os.environ["BLOB_ACCOUNT_KEY"]
 
-# Cliente único reutilizable (conexiones internas son pooleadas)
+# Reusable single client (internal connections are pooled)
 _bsc = BlobServiceClient(account_url=ACCOUNT_URL, credential=ACCOUNT_KEY)
 
 def download_bytes(container: str, blob_name: str) -> bytes:
     """
-    Descarga el blob completo como bytes.
+    Downloads the full blob as bytes.
     """
     return (
         _bsc.get_container_client(container)
@@ -21,7 +21,7 @@ def download_bytes(container: str, blob_name: str) -> bytes:
 
 def upload_bytes(container: str, blob_name: str, data: bytes, content_type: str = "application/octet-stream") -> None:
     """
-    Sube bytes al blob (overwrite=True) y setea el Content-Type.
+    Uploads bytes to the blob (overwrite=True) and sets the Content-Type.
     """
     (
         _bsc.get_container_client(container)
