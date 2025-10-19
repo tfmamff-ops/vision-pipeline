@@ -927,9 +927,6 @@ Obtener function key
 $KEY = az functionapp function keys list -g $RG -n $APP --function-name get_sas --query "default" -o tsv
 ```
 
-$KEY contiene:
-_clxTopeBpw-dEUdRkQ3AtSY6tuIfTKTieNtYdT-z50sAzFuS0qStg==
-
 Pedir SAS de upload (POST /api/sas)
 
 ```powershell
