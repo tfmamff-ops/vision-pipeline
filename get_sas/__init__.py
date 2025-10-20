@@ -3,6 +3,7 @@ import azure.functions as func
 from datetime import datetime, timedelta, timezone
 from azure.storage.blob import generate_blob_sas, BlobSasPermissions
 
+# This Azure Function (get_sas) is designed to generate URLs with SAS (Shared Access Signature) to access blobs in Azure Storage.
 
 ACCOUNT_URL = os.environ["BLOB_ACCOUNT_URL"]   # e.g., https://stvision109330379.blob.core.windows.net
 ACCOUNT_KEY = os.environ["BLOB_ACCOUNT_KEY"]
