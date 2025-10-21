@@ -7,8 +7,8 @@ Set-Location (Join-Path $PSScriptRoot '..')
 . .\.venv\Scripts\Activate.ps1
 
 # Variables
-$APP = "func-vision-pipeline-agm"
-$RG  = "rg-vision-pipeline"
+$APP = "func-vision-pipeline-tfm"
+$RG  = "rg-vision-pipeline-tfm"
 
 # Login only if there is no active session
 try {

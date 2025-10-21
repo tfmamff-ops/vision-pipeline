@@ -1,3 +1,4 @@
+from datetime import timedelta
 import azure.durable_functions as df
 
 def orchestrator_function(context: df.DurableOrchestrationContext):
@@ -25,12 +26,27 @@ def orchestrator_function(context: df.DurableOrchestrationContext):
 
     val_out = yield context.call_activity("validate_extracted_data", payload)
 
-    return {
-        "ocrResult": ocr_out["ocrResult"],
-        "processedImageBlob": ocr_out["outputBlob"],
+    output = {
+        "ocrResult": ocr_out.get("ocrResult"),
+        "processedImageBlob": ocr_out.get("outputBlob"),
         "ocrOverlayBlob": ocr_out.get("overlayBlob"),
         "barcode": bc_out,
-        "validation": val_out
+        "validation": val_out,
     }
+
+    run_doc = {
+        "instanceId": context.instance_id,
+        "createdTime": context.current_utc_datetime.isoformat(),  # determinista
+        "input": ref_in,
+        "output": output
+    }
+
+    # Persist run with retries
+    # Some versions of azure.durable_functions expect positional args for RetryOptions
+    # (first_retry_interval: timedelta, max_number_of_attempts: int)
+    retry = df.RetryOptions(timedelta(seconds=10), 5)
+    yield context.call_activity_with_retry("persist_run", retry, run_doc)
+
+    return run_doc["output"]
 
 main = df.Orchestrator.create(orchestrator_function)
