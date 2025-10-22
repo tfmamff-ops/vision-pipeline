@@ -20,9 +20,14 @@ try {
 # Verify that the Function App exists
 az functionapp show -g $RG -n $APP | Out-Null
 
-# Update dependencies
+# Update dependencies (installs only what's manually defined in requirements.txt)
 pip install -r .\requirements.txt
-pip freeze > .\requirements.txt
+
+# OPTIONAL: generate a lock file for inspection/reproducibility WITHOUT modifying requirements.txt
+pip freeze > .\requirements.lock
+
+# Publish the Azure Function App (remote build; does not include local.settings.json)
+func azure functionapp publish $APP --build remote --python
 
 # (Optional) update environment variables
 # az functionapp config appsettings set `
