@@ -1,0 +1,98 @@
+# Azure deployment (westus3, Python 3.11)
+# Requirements: `az` (Azure CLI), `func` (Azure Functions Core Tools) and the project ready in `vision-pipeline`.
+
+# Activate venv
+cd C:\Alvaro\dev\tfm-dev\azure\vision-pipeline
+.\.venv\Scripts\Activate.ps1  
+
+$RG="rg-vision-pipeline-tfm"
+$LOC="westus3" # Must be westus3 to use the free tier across all resources (Vision, Storage, and Database).
+$STO="stvision$(Get-Random)"     # Must be globally unique (lowercase letters and numbers only)
+$APP="func-vision-pipeline-tfm"  # Globally unique, use "agm"
+
+az login
+
+az group create -n $RG -l $LOC
+
+az storage account create `
+  -n $STO -g $RG -l $LOC `
+  --sku Standard_LRS --kind StorageV2
+  
+az functionapp create `
+  --name $APP `
+  --resource-group $RG `
+  --consumption-plan-location $LOC `
+  --runtime python `
+  --runtime-version 3.11 `
+  --functions-version 4 `
+  --os-type Linux `
+  --storage-account $STO
+
+# Storage 
+
+# Create containers
+az storage container create -n input  --account-name $STO --auth-mode login
+az storage container create -n work   --account-name $STO --auth-mode login
+az storage container create -n output --account-name $STO --auth-mode login
+
+# (Optional) Enable versioning and soft delete for security
+az storage account blob-service-properties update -g $RG -n $STO --enable-versioning true
+az storage account blob-service-properties update -g $RG -n $STO --enable-delete-retention true --delete-retention-days 7
+
+# Verify
+az storage container list --account-name $STO --auth-mode login -o table
+
+$BLOB_URL="https://$STO.blob.core.windows.net"
+
+# Get storage account key
+$KEY = az storage account keys list -g $RG -n $STO --query "[0].value" -o tsv
+
+# CLAHE
+$CLIP = 2.0
+$TILE = 8
+
+# Save to Function App Application settings
+az functionapp config appsettings set -g $RG -n $APP --settings `
+  WEBSITE_RUN_FROM_PACKAGE=1 `
+  BLOB_ACCOUNT_URL=$BLOB_URL `
+  ADJ_CLAHE_CLIP=$CLIP `
+  ADJ_CLAHE_TILE=$TILE `
+  BLOB_ACCOUNT_KEY=$KEY
+  
+# Create OCR service via console with these details:
+ocr-vision-pipeline-tfm
+resource group rg-vision-pipeline-tfm
+region westus3
+
+# OCR
+$OCR_ENDPOINT="https://ocr-vision-pipeline-tfm.cognitiveservices.azure.com/"
+$OCR_KEY="<OCR_KEY>"
+
+# Save to Function App Application settings
+az functionapp config appsettings set -g $RG -n $APP --settings `
+  AZURE_OCR_ENDPOINT=$OCR_ENDPOINT `
+  AZURE_OCR_KEY=$OCR_KEY 
+
+# Update dependencies (installs only what's manually defined in requirements.txt)
+pip install -r .\requirements.txt
+
+# OPTIONAL: generate a lock file for inspection/reproducibility WITHOUT modifying requirements.txt
+pip freeze > .\requirements.lock
+
+func azure functionapp publish $APP  
+
+# Create database via Azure console 
+# Admin user: admin_psql
+# Password: Find it in local.settings.json POSTGRES_URL
+# Table: create_table_VisionPipelineLog.sql
+# POSTGRES_URL
+postgresql://<USER>:<PWD>@<HOST>:5432/<DBNAME>
+
+--------- SQL
+psql "host=psql-vision-pipeline-tfm.postgres.database.azure.com port=5432 dbname=postgres user=admin_psql password=<PWD> sslmode=require" <-- To connect
+SELECT * FROM public."VisionPipelineLog"; <-- Queries (don't forget ;)
+\dt <-- To see all tables
+\di <-- To see all indexes
+\d "VisionPipelineLog" <-- To see VisionPipelineLog table
+
+
