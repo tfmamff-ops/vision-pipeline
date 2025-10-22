@@ -1,6 +1,7 @@
 import os
 import psycopg  # psycopg v3
 from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 
 POSTGRES_URL = os.environ["POSTGRES_URL"]  # e.g., "postgresql://user:pass@host:5432/dbname"
 
@@ -129,9 +130,9 @@ def main(ref: dict) -> dict:
       "barcodeRoiContainer": bc_roi.get("container"),
       "barcodeRoiBlobName":  bc_roi.get("blobName"),
 
-      # psycopg3 converts dict -> JSONB
-      "ocrPayload": ocr,
-      "barcodePayload": barcode,
+      # Wrap dicts in Jsonb for psycopg3 to convert to PostgreSQL JSONB
+      "ocrPayload": Jsonb(ocr) if ocr else None,
+      "barcodePayload": Jsonb(barcode) if barcode else None,
     }
 
     with psycopg.connect(POSTGRES_URL) as conn:

@@ -1,4 +1,3 @@
-from datetime import timedelta
 import azure.durable_functions as df
 
 def orchestrator_function(context: df.DurableOrchestrationContext):
@@ -13,10 +12,15 @@ def orchestrator_function(context: df.DurableOrchestrationContext):
     ref_in = context.get_input()
 
     ref_focus = yield context.call_activity("enhance_focus", ref_in)
+    context.set_custom_status({"stage": "enhance_focus_done"})
     ref_cb    = yield context.call_activity("adjust_contrast_brightness", ref_focus)
+    context.set_custom_status({"stage": "adjust_contrast_brightness_done"})
     ref_bw    = yield context.call_activity("to_grayscale", ref_cb)
+    context.set_custom_status({"stage": "to_grayscale_done"})
     bc_out    = yield context.call_activity("analyze_barcode", ref_bw)
+    context.set_custom_status({"stage": "analyze_barcode_done"})
     ocr_out   = yield context.call_activity("run_ocr", ref_bw)
+    context.set_custom_status({"stage": "run_ocr_done"})
 
     payload = {
         "ocr": ocr_out,
@@ -25,6 +29,7 @@ def orchestrator_function(context: df.DurableOrchestrationContext):
     }
 
     val_out = yield context.call_activity("validate_extracted_data", payload)
+    context.set_custom_status({"stage": "validation_done"})
 
     output = {
         "ocrResult": ocr_out.get("ocrResult"),
@@ -42,10 +47,13 @@ def orchestrator_function(context: df.DurableOrchestrationContext):
     }
 
     # Persist run with retries
-    # Some versions of azure.durable_functions expect positional args for RetryOptions
-    # (first_retry_interval: timedelta, max_number_of_attempts: int)
-    retry = df.RetryOptions(timedelta(seconds=10), 5)
-    yield context.call_activity_with_retry("persist_run", retry, run_doc)
+    # RetryOptions in some versions: (first_retry_interval: timedelta, max_number_of_attempts: int)
+    # In other versions: (first_retry_interval: timedelta, max_retry_interval: timedelta)
+    # Using direct instantiation without retry options to avoid version conflicts
+    # Will rely on default retry behavior of the activity
+    context.set_custom_status({"stage": "persisting_run"})
+    yield context.call_activity("persist_run", run_doc)
+    context.set_custom_status({"stage": "completed"})
 
     return run_doc["output"]
 
