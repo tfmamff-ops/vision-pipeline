@@ -1,7 +1,7 @@
 # ====== VARIABLES ======
-$RG   = "rg-vision-pipeline"
-$APP  = "func-vision-pipeline-agm"
-$FILE = "C:\Alvaro\OneDrive - UNIR\TFM\brainStorming\codigosBarras\IMG_8938.png"  # <-- YOUR LOCAL IMAGE
+$RG   = "rg-vision-pipeline-tfm"
+$APP  = "func-vision-pipeline-tfm"
+$FILE = "./samplePicture.png"  # <-- YOUR LOCAL IMAGE
 
 # Unique blob name under input/uploads/
 $ext        = [IO.Path]::GetExtension($FILE)
@@ -33,9 +33,14 @@ Invoke-WebRequest -Method Put -Uri $sasUploadUrl -InFile $FILE -Headers @{ "x-ms
 # ====== 3) INICIAR EL PIPELINE (http_start) CON LA REFERENCIA AL BLOB ======
 $KEY_START = az functionapp function keys list -g $RG -n $APP --function-name http_start --query "default" -o tsv
 $startReq = @{
-  container = "input"
-  blobName  = $BLOB_NAME
-} | ConvertTo-Json
+container = "input"
+blobName = $BLOB_NAME
+expectedData = @{
+order = "M-AR-23-00219"
+batch = "L 97907"
+expiry = "JUN/2026"
+}
+} | ConvertTo-Json -Depth 5
 
 $startResp = Invoke-RestMethod -Method POST `
   -Uri "https://$APP.azurewebsites.net/api/process" `
@@ -59,7 +64,7 @@ if ($rt -ne "Completed") {
   throw "Pipeline did not complete. Check durable_status_error.json"
 }
 
-# ====== 5) EXTRAER RESULTADO (blob final + OCR) ======
+# ====== 5) EXTRAER RESULTADO (blob final) ======
 $outBlob = $statusResp.output.processedImageBlob.blobName
 if (-not $outBlob) { throw "processedImageBlob was not found in the output." }
 
@@ -87,4 +92,4 @@ Write-Host "Final result (open in browser): $readUrl"
 Start-Process $readUrl   # opens the final image in the browser
 
 # (Optional) Download the result to disk:
-# Invoke-WebRequest -Uri $readUrl -OutFile ".\resultado_final.png"
+Invoke-WebRequest -Uri $readUrl -OutFile ".\resultado_final.png"

@@ -72,8 +72,8 @@ CREATE INDEX IF NOT EXISTS vpr_date_idx ON "VisionPipelineRun" ("processedDate")
 CREATE INDEX IF NOT EXISTS vpr_date_valsum_idx ON "VisionPipelineRun" ("createdAt", "validationSummary");
 
 -- Optional GIN indexes for JSONB querying (uncomment if needed)
--- CREATE INDEX IF NOT EXISTS vpr_ocr_gin_idx ON "VisionPipelineRun" USING GIN ("ocrPayload");
--- CREATE INDEX IF NOT EXISTS vpr_barcode_gin_idx ON "VisionPipelineRun" USING GIN ("barcodePayload");
+CREATE INDEX IF NOT EXISTS vpr_ocr_gin_idx ON "VisionPipelineRun" USING GIN ("ocrPayload");
+CREATE INDEX IF NOT EXISTS vpr_barcode_gin_idx ON "VisionPipelineRun" USING GIN ("barcodePayload");
 
 -- Comments for documentation
 COMMENT ON TABLE "VisionPipelineRun" IS 'Stores complete audit trail of vision pipeline orchestration runs with validation results';
