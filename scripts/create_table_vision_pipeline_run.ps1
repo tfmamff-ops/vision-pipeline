@@ -1,2 +1,0 @@
-# server must accept TCP/IP connections
-az postgres flexible-server execute --name psql-vision-pipeline-tfm --admin-user admin_psql --admin-password 5P5ujvFDPqyJMoVLHM2u --database-name postgres --file-path scripts/create_table_vision_pipeline_run.sql
