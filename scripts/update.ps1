@@ -1,5 +1,3 @@
-# update.ps1  (save in vision-pipeline\scripts\update.ps1)
-
 # Go to the project root (one level up from /scripts)
 Set-Location (Join-Path $PSScriptRoot '..')
 
