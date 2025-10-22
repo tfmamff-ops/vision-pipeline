@@ -26,9 +26,6 @@ pip install -r .\requirements.txt
 # OPTIONAL: generate a lock file for inspection/reproducibility WITHOUT modifying requirements.txt
 pip freeze > .\requirements.lock
 
-# Publish the Azure Function App (remote build; does not include local.settings.json)
-func azure functionapp publish $APP --build remote --python
-
 # (Optional) update environment variables
 # az functionapp config appsettings set `
 #   --name $APP `
