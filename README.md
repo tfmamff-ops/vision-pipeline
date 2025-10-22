@@ -122,7 +122,7 @@ Crear un archivo `local.settings.json` (no versionado) con las claves necesarias
 4. Revisar reglas de red y permisos del Storage para garantizar el acceso desde la Function App.
 
 ## Scripts auxiliares
-La carpeta `scripts/` contiene ejemplos de payloads y automatizaciones (PowerShell) para probar la orquestación end-to-end, junto con artefactos de referencia como `ocrResult.json`.
+La carpeta `scripts/` contiene ejemplos de payloads y automatizaciones (PowerShell) para probar la orquestación end-to-end.
 
 ## Licencia y soporte
 Documenta internamente los contratos de respuesta y coordina con el equipo de plataforma para la monitorización del recurso. Abra issues en este repositorio para rastrear mejoras o incidencias.
