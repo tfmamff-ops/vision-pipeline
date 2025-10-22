@@ -29,14 +29,15 @@ def main(ref: dict) -> dict:
     bc_roi = (barcode.get("barcodeRoiBlob") or {})
     bc_data = barcode.get("barcodeData", {})
 
-    # Detected
+  # Detected (simple: you can refine parsing if you want)
+  # If you want further normalization, do it here (search lines, etc.)
     detected_order = None
     detected_batch = None
     detected_expiry = None
 
     # UPSERT
     sql = """
-    INSERT INTO "ProcessRun" (
+    INSERT INTO "VisionPipelineRun" (
       "instanceId","createdAt","finishedAt",
       "inputContainer","inputBlobName",
       "expectedOrder","expectedBatch","expectedExpiry",
@@ -67,6 +68,9 @@ def main(ref: dict) -> dict:
     )
     ON CONFLICT ("instanceId") DO UPDATE SET
       "finishedAt" = now(),
+      "detectedOrder" = EXCLUDED."detectedOrder",
+      "detectedBatch" = EXCLUDED."detectedBatch",
+      "detectedExpiry" = EXCLUDED."detectedExpiry",
       "decodedBarcodeValue" = EXCLUDED."decodedBarcodeValue",
       "barcodeSymbology" = EXCLUDED."barcodeSymbology",
       "barcodeDetected" = EXCLUDED."barcodeDetected",
