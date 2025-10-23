@@ -1,102 +1,115 @@
-# Vision Pipeline (Azure Durable Functions)
+# Vision Pipeline · Azure Durable Functions
 
-## Resumen ejecutivo
-Este repositorio implementa un pipeline de visión artificial basado en **Azure Durable Functions**. El orquestador coordina múltiples actividades serverless para mejorar imágenes, extraer texto mediante Azure Computer Vision y validar la información frente a datos esperados antes de emitir un resultado consolidado. El flujo se invoca a través de un disparador HTTP y utiliza Azure Blob Storage para los artefactos de entrada, trabajo intermedio y salida final.
+## Descripción general
+Este proyecto implementa una canalización de visión por computadora para validar etiquetas de productos utilizando **Azure Functions** y **Azure Durable Functions**. El flujo procesa imágenes almacenadas en Blob Storage, mejora su calidad, detecta códigos de barras, ejecuta OCR con Azure AI Vision y contrasta los resultados con los datos esperados antes de registrar el resultado completo en PostgreSQL. El orquestador se invoca mediante un endpoint HTTP y expone enlaces estándar de Durable Functions para consultar el progreso.
 
-## Arquitectura y flujo de datos
-1. **Entrada HTTP** (`/api/process`): recibe la referencia del blob de origen y los metadatos esperados que deben verificarse en la etiqueta del producto.  
-2. **Orquestador Durable**: ejecuta las actividades `enhance_focus`, `adjust_contrast_brightness`, `to_grayscale`, `analyze_barcode`, `run_ocr` y `validate_extracted_data` en secuencia; finalmente entrega el resultado compuesto (imagen procesada, overlay OCR, datos del código de barras y validaciones).  
-3. **Azure Blob Storage**: todas las funciones consumen y publican blobs utilizando un `BlobServiceClient` compartido configurado mediante las credenciales de la cuenta de almacenamiento.  
-4. **Servicios externos**: `run_ocr` llama al servicio Azure Computer Vision (Image Analysis API 2023‑10‑01) empleando el endpoint y la API key configurados por entorno.  
-5. **Respuesta**: se devuelve el estado durable estándar con enlaces para consultar el progreso y, al completarse, la carga JSON con los resultados de OCR, código de barras y validación.
+## Características clave
+- Optimización de imágenes (enfoque, contraste, escala de grises) previa al análisis de texto y códigos de barras.
+- Extracción de códigos de barras con ZXing CPP y generación de overlays/recortes para auditoría visual.
+- Integración con Azure Computer Vision (Image Analysis 2023-10-01) para OCR, con creación de overlays de líneas detectadas.
+- Validación semántica contra datos esperados del lote (orden, lote y caducidad).
+- Persistencia idempotente del resultado completo en PostgreSQL mediante JSONB, preparada para explotación analítica.
+- Función auxiliar para emitir SAS de subida/lectura controlada en Blob Storage.
 
-### Contenedores y rutas de blobs
-| Propósito | Contenedor | Carpeta | Fuente |
-|-----------|------------|---------|--------|
-| Imágenes originales | `input` | `uploads/` u otra ruta definida por el cliente | Entrada HTTP | 
-| Trabajo intermedio (enfoque) | `work` | `focus/<uuid>.png` | `enhance_focus` |
-| Trabajo intermedio (contraste) | `work` | `contrast/<uuid>.png` | `adjust_contrast_brightness` |
-| Trabajo intermedio (B/N) | `work` | `bw/<uuid>.png` | `to_grayscale` |
-| Salida final | `output` | `final/<uuid>.png` | `run_ocr` |
-| Overlay OCR | `output` | `final/overlay/<uuid>.png` (opcional) | `run_ocr` |
-| Overlay código de barras | `output` | `barcode/overlay/<uuid>.png` (opcional) | `analyze_barcode` |
-| Recorte código de barras | `output` | `barcode/roi/<uuid>.png` (opcional) | `analyze_barcode` |
-
-## Funciones Azure incluidas
-| Nombre | Tipo de trigger | Responsabilidad principal |
-|--------|-----------------|---------------------------|
-| `http_start` | `httpTrigger` (POST `/api/process`) | Valida el payload, inicia la orquestación y expone los endpoints de seguimiento. |
-| `orchestrator` | `orchestrationTrigger` | Coordina la cadena de actividades y compone la respuesta final. |
-| `enhance_focus` | `activityTrigger` | Aplica unsharp masking adaptativo en espacio LAB para mejorar nitidez. |
-| `adjust_contrast_brightness` | `activityTrigger` | Mejora contraste con CLAHE configurable mediante variables de entorno. |
-| `to_grayscale` | `activityTrigger` | Convierte la imagen a escala de grises optimizando memoria. |
-| `analyze_barcode` | `activityTrigger` | Detecta y decodifica códigos de barras con ZXing, generando overlays/ROIs opcionales. |
-| `run_ocr` | `activityTrigger` | Llama a Azure Computer Vision, guarda la imagen final y genera overlays de líneas OCR. |
-| `validate_extracted_data` | `activityTrigger` | Compara OCR y código de barras frente a los valores esperados y devuelve flags de validación. |
-| `get_sas` | `httpTrigger` (POST `/api/sas`) | Emite URLs SAS restringidas para subir a `input` o leer desde `output` en Blob Storage. |
-
-## Configuración y variables de entorno
-Crear un archivo `local.settings.json` (no versionado) con las claves necesarias bajo `Values`. Ejemplo:
-
-```json
-{
-  "IsEncrypted": false,
-  "Values": {
-    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-    "FUNCTIONS_WORKER_RUNTIME": "python",
-    "BLOB_ACCOUNT_URL": "https://<account>.blob.core.windows.net",
-    "BLOB_ACCOUNT_KEY": "<storage-account-key>",
-    "AZURE_OCR_ENDPOINT": "https://<resource>.cognitiveservices.azure.com",
-    "AZURE_OCR_KEY": "<vision-key>",
-    "ADJ_CLAHE_CLIP": "2.0",
-    "ADJ_CLAHE_TILE": "8"
-  }
-}
+## Arquitectura de la solución
+El flujo se articula alrededor de un orquestador Durable Functions que ejecuta actividades en serie. Cada actividad recibe y devuelve una referencia de blob `{"container": ..., "blobName": ...}` para encadenar los pasos.
+```text
+http_start (HTTP Trigger)
+        │
+        ▼
+orchestrator (Durable Orchestration)
+        ├─► enhance_focus
+        ├─► adjust_contrast_brightness
+        ├─► to_grayscale
+        ├─► analyze_barcode
+        ├─► run_ocr
+        ├─► validate_extracted_data
+        └─► persist_run
 ```
 
-- `BLOB_ACCOUNT_URL` y `BLOB_ACCOUNT_KEY` alimentan al `BlobServiceClient` utilizado por todas las actividades de I/O.  
-- `AZURE_OCR_ENDPOINT` y `AZURE_OCR_KEY` permiten autenticar la llamada al servicio Image Analysis 2023‑10‑01.  
-- `ADJ_CLAHE_CLIP` y `ADJ_CLAHE_TILE` son opcionales y ajustan el contraste local aplicado por CLAHE.
+### Flujo de datos y contenedores
+| Etapa | Función | Contenedor origen → destino | Resultado principal |
+|-------|---------|----------------------------|---------------------|
+| Subida inicial | — | `input/uploads/<archivo>` | Imagen original |
+| Nitidez | `enhance_focus` | `input` → `work/focus/<uuid>.png` | Imagen enfocada en espacio LAB |
+| Contraste | `adjust_contrast_brightness` | `work/focus` → `work/contrast/<uuid>.png` | CLAHE configurable por entorno |
+| Escala de grises | `to_grayscale` | `work/contrast` → `work/bw/<uuid>.png` | Imagen 8 bits optimizada |
+| Código de barras | `analyze_barcode` | `work/bw` → `output/barcode/...` | Datos + overlay + ROI opcionales |
+| OCR y salida final | `run_ocr` | `work/bw` → `output/final/<uuid>.png` | Imagen final + overlay OCR opcional |
+| Validación | `validate_extracted_data` | Resultados previos | Flags de cumplimiento |
+| Auditoría | `persist_run` | PostgreSQL | Registro `VisionPipelineLog` |
 
-## Requisitos previos
-- Python 3.11 con soporte para virtual environments.
-- Node.js 18 LTS o 20 LTS y Azure Functions Core Tools 4.x para ejecutar y depurar funciones localmente.
-- Azurite (emulador de Azure Storage) o acceso a una cuenta de almacenamiento real.
-- Dependencias Python listadas en `requirements.txt`, incluidas OpenCV, ZXing y SDKs de Azure Functions/Storage.
+Las actividades de procesamiento de imágenes utilizan un `BlobServiceClient` compartido definido en `shared_code/storage_util.py`, inicializado con las credenciales declaradas en la configuración de la Function App.
+
+## Componentes principales
+- **`http_start`** (`/api/process`, `POST`): valida el payload, inicia la orquestación Durable y devuelve los enlaces de seguimiento estándar (status, events, terminate, purge). Ver `http_start/__init__.py` y `http_start/function.json`.
+- **`orchestrator`**: define la cadena de actividades, publica estados personalizados (`stage`) tras cada paso y construye la respuesta agregada. Ver `orchestrator/__init__.py`.
+- **`enhance_focus`**: aplica unsharp masking adaptativo y CLAHE sobre la luminancia en espacio LAB para mejorar nitidez. Ver `enhance_focus/__init__.py`.
+- **`adjust_contrast_brightness`**: ejecuta CLAHE con parámetros configurables y persiste el resultado en `work/contrast/`. Ver `adjust_contrast_brightness/__init__.py`.
+- **`to_grayscale`**: decodifica directamente a escala de grises y guarda una versión PNG optimizada en `work/bw/`. Ver `to_grayscale/__init__.py`.
+- **`analyze_barcode`**: utiliza `zxingcpp` sobre la imagen en gris, genera metadatos del código de barras y produce overlays/ROIs en el contenedor `output`. Ver `analyze_barcode/__init__.py`.
+- **`run_ocr`**: llama al endpoint Azure AI Vision, guarda la copia final y, si corresponde, crea un overlay con las líneas OCR detectadas. Ver `run_ocr/__init__.py`.
+- **`validate_extracted_data`**: normaliza el texto OCR, comprueba los valores esperados (orden, lote, caducidad) y evalúa la legibilidad del código de barras. Ver `validate_extracted_data/__init__.py`.
+- **`persist_run`**: consolida entrada y salida, mapea campos clave y realiza un `UPSERT` sobre `VisionPipelineLog` en PostgreSQL mediante `psycopg`. Ver `persist_run/__init__.py`.
+- **`get_sas`** (`/api/sas`, `POST`): genera SAS de subida controlada al contenedor `input` y de lectura al contenedor `output`. Ver `get_sas/__init__.py` y `get_sas/function.json`.
+
+## Persistencia y modelo de datos
+La tabla `VisionPipelineLog` almacena la traza completa de cada instancia Durable. El script `scripts/create_table_VisionPipelineLog.sql` crea la tabla (id UUID, índices por fecha y validación, columnas JSONB para OCR y código de barras) e índices recomendados para consultas frecuentes.
+El activity `persist_run` realiza un `INSERT ... ON CONFLICT` contra `instanceId`, rellenando campos esperados/detectados, indicadores de validación y referencias a blobs (`processedImage`, overlays de OCR y código de barras, ROI). Los payloads completos se almacenan en JSONB para análisis posteriores.
+
+## Dependencias y requisitos previos
+- Python **3.11**.
+- Azure Functions Core Tools 4.x y Node.js 18/20 para depuración local.
+- Cuenta de Azure Blob Storage o Azurite (si se ejecuta en local con emulación).
+- Azure AI Vision (Computer Vision) con endpoint y API key válidos.
+- Base de datos PostgreSQL 12+ accesible desde la Function App.
+- Dependencias Python listadas en `requirements.txt`, que incluyen `azure-functions`, `azure-functions-durable`, `azure-storage-blob`, `opencv-python-headless`, `numpy`, `zxing-cpp`, `requests` y `psycopg` v3.
+
+## Configuración de variables de entorno
+Declare las siguientes claves en `local.settings.json` (para desarrollo) o en la configuración de la Function App:
+| Clave | Descripción |
+|-------|-------------|
+| `AzureWebJobsStorage` | Cadena de conexión al Storage usado por Functions (Az. Storage o Azurite). |
+| `FUNCTIONS_WORKER_RUNTIME` | Debe ser `python`. |
+| `BLOB_ACCOUNT_URL`, `BLOB_ACCOUNT_KEY` | Credenciales usadas por `shared_code.storage_util` para descargar/subir blobs. |
+| `ADJ_CLAHE_CLIP`, `ADJ_CLAHE_TILE` | Parámetros opcionales de CLAHE para `adjust_contrast_brightness` (por defecto 2.0 y 8). |
+| `AZURE_OCR_ENDPOINT`, `AZURE_OCR_KEY` | Endpoint/key del recurso Azure AI Vision utilizado por `run_ocr`. |
+| `POSTGRES_URL` | Cadena `postgresql://user:pass@host:5432/db` utilizada por `persist_run`. |
 
 ## Puesta en marcha local
-1. **Clonar y preparar entorno virtual**
+1. **Crear entorno virtual e instalar dependencias**
    ```bash
    python -m venv .venv
-   source .venv/bin/activate  # En Windows: .venv\Scripts\Activate.ps1
+   source .venv/bin/activate  # Windows: .venv\Scripts\Activate.ps1
    pip install -r requirements.txt
    ```
-2. **Arrancar Azurite** (en otra terminal) si se usa el emulador: `azurite --silent --location ./.azurite`.
-3. **Configurar `local.settings.json`** con las claves descritas arriba.
-4. **Iniciar Functions Core Tools** desde la raíz del proyecto:
+2. **Configurar `local.settings.json`** con las variables anteriores y, si se usa Azurite, `UseDevelopmentStorage=true` para `AzureWebJobsStorage`.
+3. **Iniciar Azurite** (opcional): `azurite --silent --location ./.azurite`.
+4. **Arrancar el runtime** desde la raíz del proyecto:
    ```bash
    func start
    ```
-  El runtime utilizará la configuración global de `host.json`, incluida la integración con Application Insights si está habilitada.
+5. **Consultar logs** mediante la consola; la configuración `host.json` habilita Application Insights con muestreo para entradas distintas a `Request`.
 
-## Ejecución del pipeline
-1. **Subir la imagen de trabajo**: solicitar un SAS temporal (opcional) mediante `POST /api/sas` con payload:
-   ```json
+## Operación manual
+1. **Solicitar SAS para subida (opcional)**
+   ```http
+   POST /api/sas
    {
      "mode": "upload",
      "container": "input",
-     "blobName": "uploads/<archivo>.png",
+     "blobName": "uploads/ejemplo.png",
      "minutes": 15,
      "contentType": "image/png"
    }
    ```
-  La función valida que solo se suba al contenedor `input` y devuelve la URL SAS lista para usar.
-
-2. **Invocar el proceso durable** con `POST /api/process`:
-   ```json
+   La función restringe la subida al contenedor `input` y la lectura al contenedor `output`.
+2. **Invocar el pipeline**
+   ```http
+   POST /api/process
    {
      "container": "input",
-     "blobName": "uploads/<archivo>.png",
+     "blobName": "uploads/ejemplo.png",
      "expectedData": {
        "order": "M-AR-23-00219",
        "batch": "L 97907",
@@ -104,25 +117,45 @@ Crear un archivo `local.settings.json` (no versionado) con las claves necesarias
      }
    }
    ```
-  Si el payload es inválido, se responde `400`. En caso contrario se devuelve el estatus durable estándar con URLs para sondear el estado.
+   El disparador valida el payload y devuelve la respuesta estándar de Durable Functions. El progreso puede consultarse en `statusQueryGetUri`; además el orquestador publica estados personalizados (`stage`) para identificar la actividad en curso.
+3. **Resultados finales**: al completarse, la salida incluye `processedImageBlob`, `ocrOverlayBlob` (si hay líneas detectadas), `barcode.barcodeData` con indicadores de detección/legibilidad, referencias a overlays/ROIs y `validation` con los flags `orderOK`, `batchOK`, `expiryOK`, `barcodeOK` y `validationSummary`.
 
-3. **Consultar el resultado** mediante los enlaces `statusQueryGetUri` o `terminatePostUri`. Al completar, el `output` incluye:
-  - `processedImageBlob` y `ocrOverlayBlob` con referencias a los blobs finales.
-  - `barcode` con datos y blobs opcionales de overlay/ROI.
-  - `validation` con indicadores `orderOK`, `batchOK`, `expiryOK`, `barcodeOK` y un resumen agregado.
+## Monitorización y observabilidad
+- Las funciones registran trazas detalladas sobre métricas de imagen, resultados de ZXing y valores esperados/obtenidos, facilitando el diagnóstico en Application Insights o Log Analytics.
+- El estado personalizado (`context.set_custom_status`) permite construir dashboards en tiempo real con el progreso de la instancia Durable.
+- `run_ocr` informa cuántas regiones OCR se dibujaron en el overlay y registra códigos de error del servicio externo.
 
-## Observabilidad y registros
-- Las funciones realizan logging detallado para cada etapa, incluyendo trazas de validación y métricas de procesamiento de imágenes.
-- `host.json` habilita Application Insights con muestreo para tipos distintos de `Request` (ver `logging.applicationInsights`).
+## Despliegue recomendado
+El archivo `scripts/environment.txt` recopila comandos de Azure CLI para crear recursos (Resource Group, Storage, Function App, AI Vision) y establecer las `app settings`. Incluye también la publicación mediante `func azure functionapp publish` y notas para la base de datos PostgreSQL.
+Pasos generales:
+1. Crear recursos en la región `westus3` (o la que corresponda) siguiendo las instrucciones del script.
+2. Configurar las variables de entorno en la Function App (`BLOB_ACCOUNT_URL`, `BLOB_ACCOUNT_KEY`, `AZURE_OCR_*`, `POSTGRES_URL`, etc.).
+3. Crear la tabla `VisionPipelineLog` ejecutando `scripts/create_table_VisionPipelineLog.sql` en la base de datos objetivo.
+4. Publicar la aplicación con Functions Core Tools o pipelines CI/CD.
 
-## Despliegue en Azure
-1. Crear recursos: cuenta de almacenamiento (GPv2), Azure Function App (plan de consumo o Premium) y recurso de Azure AI Vision (Computer Vision 2023‑10‑01).
-2. Configurar las variables de entorno del Function App con las claves mencionadas.
-3. Publicar el proyecto con `func azure functionapp publish <nombre-funcion>` o mediante pipelines CI/CD.
-4. Revisar reglas de red y permisos del Storage para garantizar el acceso desde la Function App.
+## Estructura del repositorio
+```text
+vision-pipeline/
+├─ adjust_contrast_brightness/   # Activity: CLAHE para contraste
+├─ analyze_barcode/              # Activity: detección/overlay de códigos de barras
+├─ enhance_focus/                # Activity: unsharp masking + CLAHE
+├─ get_sas/                      # HTTP Trigger: generación de SAS
+├─ http_start/                   # HTTP Trigger: entrada del pipeline
+├─ orchestrator/                 # Orquestador Durable
+├─ persist_run/                  # Activity: persistencia en PostgreSQL
+├─ run_ocr/                      # Activity: Azure AI Vision OCR + overlay
+├─ to_grayscale/                 # Activity: conversión a B/N
+├─ validate_extracted_data/      # Activity: validaciones semánticas
+├─ shared_code/                  # Utilidades compartidas (BlobServiceClient)
+├─ scripts/                      # SQL, ejemplos y automatizaciones
+├─ requirements.txt
+└─ host.json
+```
 
-## Scripts auxiliares
-La carpeta `scripts/` contiene ejemplos de payloads y automatizaciones (PowerShell) para probar la orquestación end-to-end.
+## Recursos adicionales
+- `scripts/test_pipeline.ps1`: ejemplo end-to-end para subir una imagen, invocar la orquestación y recuperar resultados.
+- `scripts/resp.json`: respuesta de muestra del pipeline para pruebas manuales.
+- `scripts/final_image.png` y `scripts/samplePicture.png`: activos de prueba para validar el flujo completo.
 
-## Licencia y soporte
-Documenta internamente los contratos de respuesta y coordina con el equipo de plataforma para la monitorización del recurso. Abra issues en este repositorio para rastrear mejoras o incidencias.
+---
+Para soporte o mejoras, abra un issue interno describiendo el escenario y adjunte la instancia Durable (`instanceId`) registrada en `VisionPipelineLog`.
