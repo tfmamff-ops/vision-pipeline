@@ -37,7 +37,7 @@ def main(ref: dict) -> dict:
     sql = """
     INSERT INTO "VisionPipelineLog" (
       "instanceId","createdAt","finishedAt",
-      "requestedByUserId","requestedByUserRole","requestedByUserEmail",
+  "requestedByUserId","requestedByUserName","requestedByUserRole","requestedByUserEmail",
       "clientAppVersion","clientIp","clientUserAgent","requestContextPayload",
       "inputContainer","inputBlobName",
       "expectedOrder","expectedBatch","expectedExpiry",
@@ -51,7 +51,7 @@ def main(ref: dict) -> dict:
       "ocrPayload","barcodePayload"
     ) VALUES (
       %(instanceId)s,%(createdAt)s, now(),
-      %(requestedByUserId)s,%(requestedByUserRole)s,%(requestedByUserEmail)s,
+  %(requestedByUserId)s,%(requestedByUserName)s,%(requestedByUserRole)s,%(requestedByUserEmail)s,
       %(clientAppVersion)s,%(clientIp)s,%(clientUserAgent)s,%(requestContextPayload)s,
       %(inputContainer)s,%(inputBlobName)s,
       %(expectedOrder)s,%(expectedBatch)s,%(expectedExpiry)s,
@@ -67,6 +67,7 @@ def main(ref: dict) -> dict:
     ON CONFLICT ("instanceId") DO UPDATE SET
       "finishedAt" = now(),
       "requestedByUserId"    = EXCLUDED."requestedByUserId",
+  "requestedByUserName"  = EXCLUDED."requestedByUserName",
       "requestedByUserRole"  = EXCLUDED."requestedByUserRole",
       "requestedByUserEmail" = EXCLUDED."requestedByUserEmail",
       "clientAppVersion"     = EXCLUDED."clientAppVersion",
@@ -98,6 +99,7 @@ def main(ref: dict) -> dict:
 
       # Who initiated the run
       "requestedByUserId": (req_user.get("id")),
+  "requestedByUserName": req_user.get("name"),
       "requestedByUserRole": req_user.get("role"),
       "requestedByUserEmail": req_user.get("email"),
       "clientAppVersion": req_client.get("appVersion"),

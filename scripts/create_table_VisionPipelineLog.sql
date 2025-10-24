@@ -94,7 +94,7 @@ COMMENT ON COLUMN "VisionPipelineLog"."requestedByUserId" IS
 'Stable unique user ID from the authentication provider who initiated this pipeline run.';
 
 COMMENT ON COLUMN "VisionPipelineLog"."requestedByUserName" IS
-'Human-readable snapshot of the user name at execution time (e.g. "Laura Fernández").';
+'Human-readable snapshot of the user name at execution time (e.g. "Bob Smith").';
 
 COMMENT ON COLUMN "VisionPipelineLog"."requestedByUserRole" IS
 'Role of the requester at execution time (qa_operator, auditor, admin, etc.).';
