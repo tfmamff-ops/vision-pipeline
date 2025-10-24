@@ -1,8 +1,8 @@
 {
   "name": "orchestrator",
-  "instanceId": "d11cb57c0348434ab21a8eea6709d05d",
+  "instanceId": "a4cd06b02386491386ece28cb2036d74",
   "runtimeStatus": "Completed",
-  "input": "{\"container\": \"input\", \"blobName\": \"uploads/5266f306-86a2-4488-bfd8-c0799aaa116f.png\", \"expectedData\": {\"expiry\": \"JUN/2026\", \"order\": \"M-AR-23-00219\", \"batch\": \"L 97907\"}}",
+  "input": "{\"container\": \"input\", \"blobName\": \"uploads/6e267c57-d997-4e19-a7fb-dc2f3eecc9a1.png\", \"expectedData\": {\"batch\": \"L 97907\", \"expiry\": \"JUN/2026\", \"order\": \"M-AR-23-00219\"}, \"requestContext\": {\"client\": {\"ip\": \"127.0.0.1\", \"appVersion\": \"web-1.0.0\", \"userAgent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64)\"}, \"user\": {\"role\": \"qa_operator\", \"email\": \"operator.qa@lab.com\", \"name\": \"Bob Operator\", \"id\": \"auth0|9a0812ffb13\"}}}",
   "customStatus": {
     "stage": "completed"
   },
@@ -203,11 +203,11 @@
     },
     "processedImageBlob": {
       "container": "output",
-      "blobName": "final/60b36474-e3bd-47aa-88ac-ca0e87b10232.png"
+      "blobName": "final/08564b7f-f71b-4f92-b1d7-fd6717cc31dd.png"
     },
     "ocrOverlayBlob": {
       "container": "output",
-      "blobName": "final/overlay/840d2ec3-eee6-4573-a58e-be833d1646d6.png"
+      "blobName": "final/overlay/16c37092-dbdc-4930-9851-c1f420286bdf.png"
     },
     "barcode": {
       "barcodeData": {
@@ -224,11 +224,11 @@
       },
       "barcodeOverlayBlob": {
         "container": "output",
-        "blobName": "barcode/overlay/fa6358c6-6dbd-4170-b77d-991ebef167c7.png"
+        "blobName": "barcode/overlay/5d9c1cdc-59a6-40fa-b97d-93047192ba95.png"
       },
       "barcodeRoiBlob": {
         "container": "output",
-        "blobName": "barcode/roi/fa6358c6-6dbd-4170-b77d-991ebef167c7.png"
+        "blobName": "barcode/roi/5d9c1cdc-59a6-40fa-b97d-93047192ba95.png"
       }
     },
     "validation": {
@@ -241,6 +241,6 @@
       "validationSummary": true
     }
   },
-  "createdTime": "2025-10-22T03:35:15Z",
-  "lastUpdatedTime": "2025-10-22T03:35:16Z"
+  "createdTime": "2025-10-24T22:42:01Z",
+  "lastUpdatedTime": "2025-10-24T22:42:03Z"
 }
