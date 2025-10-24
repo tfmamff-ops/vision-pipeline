@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS "VisionPipelineLog" (
   "requestedByUserName"  text,          -- human-readable name snapshot at execution time (for audit/report)
   "requestedByUserRole"  text,          -- application-level role at execution time (qa_operator, auditor, admin, etc.)
   "requestedByUserEmail" text,          -- email snapshot at execution time (for human-readable audit)
-  "clientAppVersion"     text,          -- frontend/app version that initiated this run (e.g. "web-1.3.7")
+  "clientAppVersion"     text,          -- frontend/app version that initiated this run (e.g. "web-1.0.0")
   "clientIp"             text,          -- public IP observed by backend API
   "clientUserAgent"      text,          -- user agent / device string
   "requestContextPayload" jsonb,        -- full requestContext as received (user + client), for full traceability
@@ -103,7 +103,7 @@ COMMENT ON COLUMN "VisionPipelineLog"."requestedByUserEmail" IS
 'Email of the requester at execution time, stored for human-readable audits or reports.';
 
 COMMENT ON COLUMN "VisionPipelineLog"."clientAppVersion" IS
-'Version of the frontend or mobile client used to trigger this run (e.g. "web-1.3.7").';
+'Version of the frontend or mobile client used to trigger this run (e.g. "web-1.0.0").';
 
 COMMENT ON COLUMN "VisionPipelineLog"."clientIp" IS
 'Public IP address observed by the backend when the request was received.';

@@ -40,7 +40,19 @@ order = "M-AR-23-00219"
 batch = "L 97907"
 expiry = "JUN/2026"
 }
-} | ConvertTo-Json -Depth 5
+requestContent = @{
+  user = @{
+    id = "auth0|9a0812ffb13"
+    name = "Bob Operator"
+    email = "operator.qa@lab.com"
+    role = "qa_operator"
+  }
+  client = @{
+    appVersion = "web-1.0.0"
+    ip = "127.0.0.1"
+    userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+  }  
+} 
 
 $startResp = Invoke-RestMethod -Method POST `
   -Uri "https://$APP.azurewebsites.net/api/process" `
