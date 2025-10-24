@@ -5,11 +5,24 @@ import azure.durable_functions as df
 
 async def main(req: func.HttpRequest, starter: str) -> func.HttpResponse:
     """
-    ONLY accepts JSON:
+    Accepts JSON with blob reference, expected data, and requester context:
     {
       "container": "input",
       "blobName": "uploads/archivo.png",
-      "expectedData": {expiry: 'JUN/2028', batch: 'L 97907', order: 'M-AR-23-00219'}
+      "expectedData": { "expiry": "2027-09-30", "batch": "L2025A", "order": "PO-99871" },
+      "requestContext": {
+        "user": {
+          "id": "auth0|9a0812ffb13",
+          "name": "Alice Operator",
+          "email": "operator.qa@lab.com",
+          "role": "qa_operator"
+        },
+        "client": {
+          "appVersion": "web-1.3.7",
+          "ip": "203.0.113.42",
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+        }
+      }
     }
     """
     client = df.DurableOrchestrationClient(starter)
@@ -23,21 +36,60 @@ async def main(req: func.HttpRequest, starter: str) -> func.HttpResponse:
         container = payload.get("container")
         blob_name = payload.get("blobName")
         expected_data = payload.get("expectedData", {})
+        request_context = payload.get("requestContext")
         
-        logging.info("[http_start] container=%s, blobName=%s, expectedData=%s", container, blob_name, expected_data)
+        logging.info("[http_start] container=%s, blobName=%s, expectedData=%s, hasRequestContext=%s",
+                     container, blob_name, bool(expected_data), bool(request_context))
         
-        if container != "input" or not blob_name or not expected_data:
-            logging.warning("[http_start] Validation failed - returning 400")
-            response = func.HttpResponse("Expected {container:'input', blobName:'...', expectedData:{...}}", status_code=400)
+        # Basic validations
+        missing = []
+        if container != "input":
+            missing.append("container=='input'")
+        if not blob_name:
+            missing.append("blobName")
+        if not isinstance(expected_data, dict) or not expected_data:
+            missing.append("expectedData")
+
+        # Strict requirement: identity must be present because DB enforces NOT NULL
+        user_id = None
+        if isinstance(request_context, dict):
+            user = request_context.get("user") or {}
+            user_id = user.get("id")
+        if not user_id:
+            missing.append("requestContext.user.id")
+
+        if missing:
+            msg = {
+                "error": "Bad Request",
+                "missing": missing,
+                "hint": "Expected container='input', blobName, expectedData{order,batch,expiry}, requestContext.user.id"
+            }
+            logging.warning("[http_start] Validation failed: %s", msg)
+            response = func.HttpResponse(
+                json.dumps(msg, ensure_ascii=False),
+                status_code=400,
+                mimetype="application/json"
+            )
             logging.info("[http_start] Response status=%s, body=%s", response.status_code, response.get_body().decode('utf-8'))
             return response
     except Exception as e:
         logging.exception("[http_start] Error processing JSON - returning 400")
-        response = func.HttpResponse(f"Invalid JSON: {e}", status_code=400)
+        response = func.HttpResponse(
+            json.dumps({"error": "Invalid JSON", "detail": str(e)}, ensure_ascii=False),
+            status_code=400,
+            mimetype="application/json"
+        )
         logging.info("[http_start] Response status=%s, body=%s", response.status_code, response.get_body().decode('utf-8'))
         return response
 
-    instance_id = await client.start_new("orchestrator", None, {"container": container, "blobName": blob_name, "expectedData": expected_data})
+    # Forward full context to the orchestrator (keeps strict identity requirements)
+    orch_input = {
+        "container": container,
+        "blobName": blob_name,
+        "expectedData": expected_data,
+        "requestContext": request_context
+    }
+    instance_id = await client.start_new("orchestrator", None, orch_input)
     logging.info("[http_start] Orchestrator started with instance_id=%s", instance_id)
     
     response = client.create_check_status_response(req, instance_id)
