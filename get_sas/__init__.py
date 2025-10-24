@@ -49,11 +49,11 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     minutes     = int(data.get("minutes") or 10)
     content_type= data.get("contentType")  # optional for upload
 
-    # Minimal policy: only upload to input; only read from output.
+    # Minimal policy: only upload to input; only read from output or erp.
     if mode == "upload" and container != "input":
         return func.HttpResponse("Uploads must target the 'input' container.", status_code=400)
-    if mode == "read" and container not in ("output",):
-        return func.HttpResponse("Reads are allowed only from the 'output' container.", status_code=400)
+    if mode == "read" and container not in ("output", "erp"):
+        return func.HttpResponse("Reads are allowed only from 'output' or 'erp' containers.", status_code=400)
     if not blob_name:
         return func.HttpResponse("Missing 'blobName'.", status_code=400)
 

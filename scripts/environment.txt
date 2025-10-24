@@ -34,6 +34,7 @@ az functionapp create `
 az storage container create -n input  --account-name $STO --auth-mode login
 az storage container create -n work   --account-name $STO --auth-mode login
 az storage container create -n output --account-name $STO --auth-mode login
+az storage container create -n erp    --account-name $STO --auth-mode login
 
 # (Optional) Enable versioning and soft delete for security
 az storage account blob-service-properties update -g $RG -n $STO --enable-versioning true
