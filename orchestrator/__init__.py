@@ -11,13 +11,13 @@ def orchestrator_function(context: df.DurableOrchestrationContext):
         "requestContext": {
           "user": {
             "id": "auth0|9a0812ffb13",      # Stable unique ID from auth provider (e.g. Auth0, Azure AD, Firebase)
-            "name": "Bob Smith",            # Optional for audit/log display
+            "name": "Bob Operator",            # Optional for audit/log display
             "email": "operator.qa@lab.com", # Optional for audit/log display
             "role": "qa_operator"           # Functional role (admin, auditor, operator, etc.)
           },
           "client": {
-            "appVersion": "web-1.3.7",      # Frontend or mobile app version
-            "ip": "203.0.113.42",           # Public IP as seen by backend API
+            "appVersion": "web-1.0.0",      # Frontend or mobile app version
+            "ip": "127.0.0.1",           # Public IP as seen by backend API
             "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"  # Browser or device info
           }
         }

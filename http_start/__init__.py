@@ -13,13 +13,13 @@ async def main(req: func.HttpRequest, starter: str) -> func.HttpResponse:
       "requestContext": {
         "user": {
           "id": "auth0|9a0812ffb13",
-          "name": "Alice Operator",
+          "name": "Bob Operator",
           "email": "operator.qa@lab.com",
           "role": "qa_operator"
         },
         "client": {
-          "appVersion": "web-1.3.7",
-          "ip": "203.0.113.42",
+          "appVersion": "web-1.0.0",
+          "ip": "127.0.0.1",
           "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
         }
       }
