@@ -26,16 +26,6 @@ CREATE TABLE IF NOT EXISTS "VisionPipelineLog" (
   "expectedBatch" text,
   "expectedExpiry" text,
 
-  -- === Detected values from OCR / barcode ===
-  "detectedOrder" text,
-  "detectedBatch" text,
-  "detectedExpiry" text,
-
-  "decodedBarcodeValue" text,
-  "barcodeSymbology" text,
-  "barcodeDetected" boolean,
-  "barcodeLegible" boolean,
-
   -- === Validation flags ===
   "validationOrderOK" boolean,
   "validationBatchOK" boolean,
@@ -70,8 +60,7 @@ CREATE INDEX IF NOT EXISTS pr_created_idx
 CREATE INDEX IF NOT EXISTS pr_valsum_idx
   ON "VisionPipelineLog" ("validationSummary");
 
-CREATE INDEX IF NOT EXISTS pr_barcode_idx
-  ON "VisionPipelineLog" ("decodedBarcodeValue");
+-- Removed pr_barcode_idx because decodedBarcodeValue no longer exists
 
 -- Composite index for common query pattern (date range + validation filter)
 CREATE INDEX IF NOT EXISTS pr_date_valsum_idx

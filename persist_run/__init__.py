@@ -22,27 +22,25 @@ def main(ref: dict) -> dict:
     # Expected data from the request (already an object in this flow)
     expected = input_obj.get("expectedData", {})
 
+    # Request context (who/what triggered the run)
+    req_ctx = input_obj.get("requestContext", {}) or {}
+    req_user = req_ctx.get("user", {}) or {}
+    req_client = req_ctx.get("client", {}) or {}
+
     # Blob extras
     proc_blob = (out.get("processedImageBlob") or {})
     ocr_overlay = (out.get("ocrOverlayBlob") or {})
     bc_overlay = (barcode.get("barcodeOverlayBlob") or {})
     bc_roi = (barcode.get("barcodeRoiBlob") or {})
-    bc_data = barcode.get("barcodeData", {})
-
-  # Detected (simple: you can refine parsing if you want)
-  # If you want further normalization, do it here (search lines, etc.)
-    detected_order = None
-    detected_batch = None
-    detected_expiry = None
 
     # UPSERT
     sql = """
     INSERT INTO "VisionPipelineLog" (
       "instanceId","createdAt","finishedAt",
+      "requestedByUserId","requestedByUserRole","requestedByUserEmail",
+      "clientAppVersion","clientIp","clientUserAgent","requestContextPayload",
       "inputContainer","inputBlobName",
       "expectedOrder","expectedBatch","expectedExpiry",
-      "detectedOrder","detectedBatch","detectedExpiry",
-      "decodedBarcodeValue","barcodeSymbology","barcodeDetected","barcodeLegible",
       "validationOrderOK","validationBatchOK","validationExpiryOK",
       "validationBarcodeDetectedOK","validationBarcodeLegibleOK","validationBarcodeOK",
       "validationSummary",
@@ -53,10 +51,10 @@ def main(ref: dict) -> dict:
       "ocrPayload","barcodePayload"
     ) VALUES (
       %(instanceId)s,%(createdAt)s, now(),
+      %(requestedByUserId)s,%(requestedByUserRole)s,%(requestedByUserEmail)s,
+      %(clientAppVersion)s,%(clientIp)s,%(clientUserAgent)s,%(requestContextPayload)s,
       %(inputContainer)s,%(inputBlobName)s,
       %(expectedOrder)s,%(expectedBatch)s,%(expectedExpiry)s,
-      %(detectedOrder)s,%(detectedBatch)s,%(detectedExpiry)s,
-      %(decodedBarcodeValue)s,%(barcodeSymbology)s,%(barcodeDetected)s,%(barcodeLegible)s,
       %(validationOrderOK)s,%(validationBatchOK)s,%(validationExpiryOK)s,
       %(validationBarcodeDetectedOK)s,%(validationBarcodeLegibleOK)s,%(validationBarcodeOK)s,
       %(validationSummary)s,
@@ -68,13 +66,13 @@ def main(ref: dict) -> dict:
     )
     ON CONFLICT ("instanceId") DO UPDATE SET
       "finishedAt" = now(),
-      "detectedOrder" = EXCLUDED."detectedOrder",
-      "detectedBatch" = EXCLUDED."detectedBatch",
-      "detectedExpiry" = EXCLUDED."detectedExpiry",
-      "decodedBarcodeValue" = EXCLUDED."decodedBarcodeValue",
-      "barcodeSymbology" = EXCLUDED."barcodeSymbology",
-      "barcodeDetected" = EXCLUDED."barcodeDetected",
-      "barcodeLegible" = EXCLUDED."barcodeLegible",
+      "requestedByUserId"    = EXCLUDED."requestedByUserId",
+      "requestedByUserRole"  = EXCLUDED."requestedByUserRole",
+      "requestedByUserEmail" = EXCLUDED."requestedByUserEmail",
+      "clientAppVersion"     = EXCLUDED."clientAppVersion",
+      "clientIp"             = EXCLUDED."clientIp",
+      "clientUserAgent"      = EXCLUDED."clientUserAgent",
+      "requestContextPayload"= EXCLUDED."requestContextPayload",
       "validationOrderOK" = EXCLUDED."validationOrderOK",
       "validationBatchOK" = EXCLUDED."validationBatchOK",
       "validationExpiryOK" = EXCLUDED."validationExpiryOK",
@@ -98,21 +96,21 @@ def main(ref: dict) -> dict:
       "instanceId": instance_id,
       "createdAt": created_time,
 
+      # Who initiated the run
+      "requestedByUserId": (req_user.get("id")),
+      "requestedByUserRole": req_user.get("role"),
+      "requestedByUserEmail": req_user.get("email"),
+      "clientAppVersion": req_client.get("appVersion"),
+      "clientIp": req_client.get("ip"),
+      "clientUserAgent": req_client.get("userAgent"),
+      "requestContextPayload": Jsonb(req_ctx) if req_ctx else None,
+
       "inputContainer": input_obj.get("container"),
       "inputBlobName":  input_obj.get("blobName"),
 
       "expectedOrder": expected.get("order"),
       "expectedBatch": expected.get("batch"),
       "expectedExpiry": expected.get("expiry"),
-
-      "detectedOrder": detected_order,
-      "detectedBatch": detected_batch,
-      "detectedExpiry": detected_expiry,
-
-      "decodedBarcodeValue": bc_data.get("decodedValue"),
-      "barcodeSymbology":    bc_data.get("barcodeSymbology"),
-      "barcodeDetected":     bc_data.get("barcodeDetected"),
-      "barcodeLegible":      bc_data.get("barcodeLegible"),
 
       "validationOrderOK":           val.get("orderOK"),
       "validationBatchOK":           val.get("batchOK"),
