@@ -11,6 +11,7 @@ def orchestrator_function(context: df.DurableOrchestrationContext):
         "requestContext": {
           "user": {
             "id": "auth0|9a0812ffb13",      # Stable unique ID from auth provider (e.g. Auth0, Azure AD, Firebase)
+            "name": "Alice Operator",       # Optional for audit/log display
             "email": "operator.qa@lab.com", # Optional for audit/log display
             "role": "qa_operator"           # Functional role (admin, auditor, operator, etc.)
           },

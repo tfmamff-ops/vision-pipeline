@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS "VisionPipelineLog" (
 
   -- === Request origin / operator context ===
   "requestedByUserId"    text NOT NULL, -- stable unique ID from auth provider at execution time
+  "requestedByUserName"  text,          -- human-readable name snapshot at execution time (for audit/report)
   "requestedByUserRole"  text,          -- application-level role at execution time (qa_operator, auditor, admin, etc.)
   "requestedByUserEmail" text,          -- email snapshot at execution time (for human-readable audit)
   "clientAppVersion"     text,          -- frontend/app version that initiated this run (e.g. "web-1.3.7")
@@ -60,8 +61,6 @@ CREATE INDEX IF NOT EXISTS pr_created_idx
 CREATE INDEX IF NOT EXISTS pr_valsum_idx
   ON "VisionPipelineLog" ("validationSummary");
 
--- Removed pr_barcode_idx because decodedBarcodeValue no longer exists
-
 -- Composite index for common query pattern (date range + validation filter)
 CREATE INDEX IF NOT EXISTS pr_date_valsum_idx
   ON "VisionPipelineLog" ("createdAt", "validationSummary");
@@ -71,6 +70,9 @@ CREATE INDEX IF NOT EXISTS pr_user_idx
 
 CREATE INDEX IF NOT EXISTS pr_user_date_idx
   ON "VisionPipelineLog" ("requestedByUserId", "createdAt");
+
+CREATE INDEX IF NOT EXISTS pr_userrole_idx
+  ON "VisionPipelineLog" ("requestedByUserRole");
 
 CREATE INDEX IF NOT EXISTS pr_appver_idx
   ON "VisionPipelineLog" ("clientAppVersion");
@@ -90,6 +92,9 @@ COMMENT ON COLUMN "VisionPipelineLog"."instanceId" IS
 
 COMMENT ON COLUMN "VisionPipelineLog"."requestedByUserId" IS
 'Stable unique user ID from the authentication provider who initiated this pipeline run.';
+
+COMMENT ON COLUMN "VisionPipelineLog"."requestedByUserName" IS
+'Human-readable snapshot of the user name at execution time (e.g. "Laura Fernández").';
 
 COMMENT ON COLUMN "VisionPipelineLog"."requestedByUserRole" IS
 'Role of the requester at execution time (qa_operator, auditor, admin, etc.).';
