@@ -37,9 +37,10 @@ def main(ref: dict) -> dict:
     sql = """
     INSERT INTO "VisionPipelineLog" (
       "instanceId","createdAt","finishedAt",
-  "requestedByUserId","requestedByUserName","requestedByUserRole","requestedByUserEmail",
+      "requestedByUserId","requestedByUserName","requestedByUserRole","requestedByUserEmail",
       "clientAppVersion","clientIp","clientUserAgent","requestContextPayload",
       "inputContainer","inputBlobName",
+      "item","itemDesc",
       "expectedOrder","expectedBatch","expectedExpiry",
       "validationOrderOK","validationBatchOK","validationExpiryOK",
       "validationBarcodeDetectedOK","validationBarcodeLegibleOK","validationBarcodeOK",
@@ -54,6 +55,7 @@ def main(ref: dict) -> dict:
   %(requestedByUserId)s,%(requestedByUserName)s,%(requestedByUserRole)s,%(requestedByUserEmail)s,
       %(clientAppVersion)s,%(clientIp)s,%(clientUserAgent)s,%(requestContextPayload)s,
       %(inputContainer)s,%(inputBlobName)s,
+  %(item)s,%(itemDesc)s,
       %(expectedOrder)s,%(expectedBatch)s,%(expectedExpiry)s,
       %(validationOrderOK)s,%(validationBatchOK)s,%(validationExpiryOK)s,
       %(validationBarcodeDetectedOK)s,%(validationBarcodeLegibleOK)s,%(validationBarcodeOK)s,
@@ -67,13 +69,15 @@ def main(ref: dict) -> dict:
     ON CONFLICT ("instanceId") DO UPDATE SET
       "finishedAt" = now(),
       "requestedByUserId"    = EXCLUDED."requestedByUserId",
-  "requestedByUserName"  = EXCLUDED."requestedByUserName",
+      "requestedByUserName"  = EXCLUDED."requestedByUserName",
       "requestedByUserRole"  = EXCLUDED."requestedByUserRole",
       "requestedByUserEmail" = EXCLUDED."requestedByUserEmail",
       "clientAppVersion"     = EXCLUDED."clientAppVersion",
       "clientIp"             = EXCLUDED."clientIp",
       "clientUserAgent"      = EXCLUDED."clientUserAgent",
       "requestContextPayload"= EXCLUDED."requestContextPayload",
+      "item" = EXCLUDED."item",
+      "itemDesc" = EXCLUDED."itemDesc",
       "validationOrderOK" = EXCLUDED."validationOrderOK",
       "validationBatchOK" = EXCLUDED."validationBatchOK",
       "validationExpiryOK" = EXCLUDED."validationExpiryOK",
@@ -99,7 +103,7 @@ def main(ref: dict) -> dict:
 
       # Who initiated the run
       "requestedByUserId": (req_user.get("id")),
-  "requestedByUserName": req_user.get("name"),
+      "requestedByUserName": req_user.get("name"),
       "requestedByUserRole": req_user.get("role"),
       "requestedByUserEmail": req_user.get("email"),
       "clientAppVersion": req_client.get("appVersion"),
@@ -109,6 +113,9 @@ def main(ref: dict) -> dict:
 
       "inputContainer": input_obj.get("container"),
       "inputBlobName":  input_obj.get("blobName"),
+
+      "item": expected.get("item"),
+      "itemDesc": expected.get("itemDesc"),
 
       "expectedOrder": expected.get("order"),
       "expectedBatch": expected.get("batch"),

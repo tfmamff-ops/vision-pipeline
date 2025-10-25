@@ -23,6 +23,10 @@ CREATE TABLE IF NOT EXISTS "VisionPipelineLog" (
   "inputContainer" text,
   "inputBlobName"  text,
 
+  -- === Expected product information ===
+  "item" text,         -- medication code (from expectedData.item)
+  "itemDesc" text,     -- medication description/name (from expectedData.itemDesc)
+
   "expectedOrder" text,
   "expectedBatch" text,
   "expectedExpiry" text,
@@ -77,6 +81,14 @@ CREATE INDEX IF NOT EXISTS pr_userrole_idx
 CREATE INDEX IF NOT EXISTS pr_appver_idx
   ON "VisionPipelineLog" ("clientAppVersion");
 
+-- Lookups by medication code
+CREATE INDEX IF NOT EXISTS pr_item_idx
+  ON "VisionPipelineLog" ("item");
+
+-- Common filter: item within date range
+CREATE INDEX IF NOT EXISTS pr_item_date_idx
+  ON "VisionPipelineLog" ("item", "createdAt");
+
 CREATE INDEX IF NOT EXISTS pr_ocr_gin_idx
   ON "VisionPipelineLog" USING GIN ("ocrPayload");
 
@@ -116,6 +128,12 @@ COMMENT ON COLUMN "VisionPipelineLog"."requestContextPayload" IS
 
 COMMENT ON COLUMN "VisionPipelineLog"."validationSummary" IS
 'Overall validation result: true if all individual checks passed.';
+
+COMMENT ON COLUMN "VisionPipelineLog"."item" IS
+'Medication code provided in the request expectedData.';
+
+COMMENT ON COLUMN "VisionPipelineLog"."itemDesc" IS
+'Medication description/name provided in the request expectedData.';
 
 COMMENT ON COLUMN "VisionPipelineLog"."ocrPayload" IS
 'Full Azure Computer Vision OCR response (JSONB).';
