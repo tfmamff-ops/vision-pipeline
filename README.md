@@ -15,7 +15,7 @@ Este proyecto implementa una canalización de análisis de imágenes farmacéuti
   - `to_grayscale`: convierte la imagen a escala de grises optimizando memoria y rendimiento.
   - `analyze_barcode`: detecta y decodifica códigos de barras usando `zxing-cpp`, generando superposiciones y recortes.
   - `run_ocr`: envía la imagen al servicio Azure Computer Vision, genera una copia final y un overlay con las regiones leídas.
-  - `validate_extracted_data`: compara OCR y código de barras contra los valores esperados, con reglas tolerantes y un sentinela `N/A` para omitir campos.
+  - `validate_extracted_data`: compara OCR y código de barras contra los valores esperados, con reglas tolerantes y un centinela `N/A` para omitir campos.
   - `persist_run`: consolida la ejecución en la tabla `VisionPipelineLog` sobre PostgreSQL, incluyendo metadatos de usuario, cliente y blobs resultantes.
 - **Código compartido**
   - `shared_code/storage_util`: envuelve operaciones de Azure Blob Storage para descargar y subir bytes con `BlobServiceClient`.
