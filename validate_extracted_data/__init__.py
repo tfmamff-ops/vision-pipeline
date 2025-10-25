@@ -52,9 +52,9 @@ def main(payload: dict) -> dict:
     
     Expected payload structure from orchestrator:
     {
-      "ocr": {...},
-      "barcode": {"barcodeData": {...}},
-      "expected": {"order": "...", "batch": "...", "expiry": "..."}
+    "ocr": {...},
+    "barcode": {"barcodeData": {...}},
+    "expected": {"order": "...", "batch": "...", "expiry": "..."}
     }
     """
     logging.info("[validate_extracted_data] Starting validation")

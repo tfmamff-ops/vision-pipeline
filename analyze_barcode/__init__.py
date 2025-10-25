@@ -14,9 +14,9 @@ def _np_from_image_bytes(img_bytes: bytes) -> np.ndarray:
 def _extract_xy(p):
     """
     Returns (x, y) from:
-      - objects with attributes .x / .y (e.g., zxingcpp.Point)
-      - dicts with keys 'x'/'y'
-      - tuples/lists (x, y)
+    - objects with attributes .x / .y (e.g., zxingcpp.Point)
+    - dicts with keys 'x'/'y'
+    - tuples/lists (x, y)
     Raises ValueError if coordinates cannot be extracted.
     """
     if hasattr(p, "x") and hasattr(p, "y"):
@@ -71,8 +71,7 @@ def _no_barcode():
 def main(ref: dict) -> dict:
     """
     Expected input: {"container": "...", "blobName": "..."} (output from to_grayscale)
-    Output:
-      {
+    Output:{
         "barcodeData": {
             "barcodeDetected": bool,
             "barcodeLegible": bool,
@@ -82,7 +81,7 @@ def main(ref: dict) -> dict:
         },  
         "barcodeOverlayBlob": {"container":"output","blobName":"barcode/overlay/<uuid>.png"} | None,
         "barcodeRoiBlob": {"container":"output","blobName":"barcode/roi/<uuid>.png"} | None,
-      }
+    }
     """
     try:
         logging.info("[analyze_barcode] start ref=%s", ref)

@@ -7,24 +7,31 @@ async def main(req: func.HttpRequest, starter: str) -> func.HttpResponse:
     """
     Accepts JSON with blob reference, expected data, and requester context:
     {
-      "container": "input",
-      "blobName": "uploads/archivo.png",
-      "expectedData": { "expiry": "2027-09-30", "batch": "L2025A", "order": "PO-99871" },
-      "requestContext": {
-        "user": {
-          "id": "auth0|9a0812ffb13",
-          "name": "Bob Operator",
-          "email": "operator.qa@lab.com",
-          "role": "qa_operator"
+        "container": "input",
+        "blobName": "uploads/archivo.png",
+        "expectedData": {
+            "item": "EUTEBROL-A7E0",
+            "itemDesc": "EUTEBROL DUO",
+            "batch": "S 101144",
+            "expiry": "V JUL/2027",
+            "order": "E JUL/2025"
         },
-        "client": {
-          "appVersion": "web-1.0.0",
-          "ip": "127.0.0.1",
-          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+        "requestContext": {
+            "user": {
+                "id": "auth0|9a0812ffb13",
+                "name": "Bob Operator",
+                "email": "operator.qa@lab.com",
+                "role": "qa_operator"
+            },
+            "client": {
+                "appVersion": "web-1.0.0",
+                "ip": "127.0.0.1",
+                "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+            }
         }
-      }
     }
     """
+
     client = df.DurableOrchestrationClient(starter)
     try:
         payload = req.get_json()
@@ -38,7 +45,7 @@ async def main(req: func.HttpRequest, starter: str) -> func.HttpResponse:
         expected_data = payload.get("expectedData", {})
         request_context = payload.get("requestContext")
         
-        logging.info("[http_start] container=%s, blobName=%s, expectedData=%s, hasRequestContext=%s",
+        logging.info("[http_start] container=%s, blobName=%s, expectedData=%s, hasRequestContext=%s", 
                      container, blob_name, bool(expected_data), bool(request_context))
         
         # Basic validations

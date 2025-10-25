@@ -25,9 +25,9 @@ def main(ref: dict) -> dict:
     """
     Enhances image contrast and brightness using CLAHE in LAB color space.
     Input:
-      { "container": "...", "blobName": "..." }
+        { "container": "...", "blobName": "..." }
     Output:
-      { "container": "work", "blobName": "contrast/<uuid>.png" }
+        { "container": "work", "blobName": "contrast/<uuid>.png" }
     """
     raw = download_bytes(ref["container"], ref["blobName"])
     bgr_img = _bytes_to_img(raw)
