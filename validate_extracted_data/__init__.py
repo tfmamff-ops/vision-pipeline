@@ -34,17 +34,53 @@ def _extract_ocr_text(ocr_result: dict) -> dict:
 
 def _contains_robust(hay_full: str, hay_full_ns: str, needle: str) -> bool:
     """
-    True if needle appears in OCR either as-is (case-insensitive) or
-    when both sides are normalized (uppercased, no spaces).
+    True if needle appears in OCR with the following rules:
+    1. If needle is "N/A" (sentinel), always return True (skip validation)
+    2. Try to find needle as-is (case-insensitive) or normalized (no spaces)
+    3. If not found and needle contains spaces, split by spaces and search each component
+       - All components must be found for validation to pass
     """
     if not needle:
         return False
-    ndl = _safe_upper(needle).strip()
-    if ndl and ndl in hay_full:
+    
+    # Rule 1: Sentinel "N/A" always validates as True
+    if needle.strip().upper() == "N/A":
+        logging.info("[validate_extracted_data] Sentinel 'N/A' detected for '%s' - validation bypassed (True)", needle)
         return True
-    found = _norm_no_spaces(ndl) in hay_full_ns
-    logging.debug("[validate_extracted_data] Search '%s' in OCR: %s", needle, found)
-    return found
+    
+    ndl = _safe_upper(needle).strip()
+    
+    # Rule 2: Try exact match (with and without spaces)
+    if ndl and ndl in hay_full:
+        logging.debug("[validate_extracted_data] Exact match found for '%s'", needle)
+        return True
+    
+    if _norm_no_spaces(ndl) in hay_full_ns:
+        logging.debug("[validate_extracted_data] Normalized match found for '%s'", needle)
+        return True
+    
+    # Rule 3: If contains spaces, try finding all components individually
+    if " " in ndl:
+        components = [c for c in ndl.split() if c]  # Split by spaces, filter empty
+        logging.debug("[validate_extracted_data] Searching components %s for '%s'", components, needle)
+        
+        all_found = True
+        for comp in components:
+            # Search each component in both full and normalized OCR text
+            comp_found = comp in hay_full or _norm_no_spaces(comp) in hay_full_ns
+            if not comp_found:
+                logging.debug("[validate_extracted_data] Component '%s' NOT found", comp)
+                all_found = False
+                break
+            else:
+                logging.debug("[validate_extracted_data] Component '%s' found", comp)
+        
+        if all_found:
+            logging.info("[validate_extracted_data] All components found for '%s'", needle)
+            return True
+    
+    logging.debug("[validate_extracted_data] Search '%s' in OCR: False", needle)
+    return False
 
 def main(payload: dict) -> dict:
     """
