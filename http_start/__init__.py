@@ -69,7 +69,7 @@ async def main(req: func.HttpRequest, starter: str) -> func.HttpResponse:
             msg = {
                 "error": "Bad Request",
                 "missing": missing,
-                "hint": "Expected container='input', blobName, expectedData{order,batch,expiry}, requestContext.user.id"
+                "hint": "Expected container='input', blobName, expectedData{item, itemDesc, order, batch, expiry}, requestContext.user.id"
             }
             logging.warning("[http_start] Validation failed: %s", msg)
             response = func.HttpResponse(

@@ -6,18 +6,23 @@ def orchestrator_function(context: df.DurableOrchestrationContext):
       {
         "container": "input",
         "blobName": "uploads/archivo.png",
-        "expectedData": { "expiry": "2027-09-30", "batch": "L2025A", "order": "PO-99871" },
-
+        "expectedData": {
+            "item": "EUTEBROL-A7E0",
+            "itemDesc": "EUTEBROL DUO",
+            "batch": "S 101144",
+            "expiry": "V JUL/2027",
+            "order": "E JUL/2025"
+        },
         "requestContext": {
           "user": {
             "id": "auth0|9a0812ffb13",      # Stable unique ID from auth provider (e.g. Auth0, Azure AD, Firebase)
-            "name": "Bob Operator",            # Optional for audit/log display
+            "name": "Bob Operator",         # Optional for audit/log display
             "email": "operator.qa@lab.com", # Optional for audit/log display
             "role": "qa_operator"           # Functional role (admin, auditor, operator, etc.)
           },
           "client": {
             "appVersion": "web-1.0.0",      # Frontend or mobile app version
-            "ip": "127.0.0.1",           # Public IP as seen by backend API
+            "ip": "127.0.0.1",              # Public IP as seen by backend API
             "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"  # Browser or device info
           }
         }
