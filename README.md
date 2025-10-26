@@ -16,7 +16,7 @@ Este proyecto implementa una canalización de análisis de imágenes farmacéuti
   - `analyze_barcode`: detecta y decodifica códigos de barras usando `zxing-cpp`, generando superposiciones y recortes.
   - `run_ocr`: envía la imagen al servicio Azure Computer Vision, genera una copia final y un overlay con las regiones leídas.
   - `validate_extracted_data`: compara OCR y código de barras contra los valores esperados, con reglas tolerantes y un centinela `N/A` para omitir campos.
-  - `persist_run`: consolida la ejecución en la tabla `VisionPipelineLog` sobre PostgreSQL, incluyendo metadatos de usuario, cliente y blobs resultantes.
+  - `persist_run`: consolida la ejecución en la tabla `vision_pipeline_log` sobre PostgreSQL, incluyendo metadatos de usuario, cliente y blobs resultantes.
 - **Código compartido**
   - `shared_code/storage_util`: envuelve operaciones de Azure Blob Storage para descargar y subir bytes con `BlobServiceClient`.
 
@@ -35,8 +35,8 @@ Las funciones se describen en los archivos `function.json` correspondientes para
   - Contenedores: `input` (ingesta), `work` (intermedios), `output` (resultados) y `erp` (solo lectura para integración externa).
   - Los helpers de `storage_util` controlan el tipo de contenido (`image/png`) y el sobreescrito seguro.
 - **Base de datos**
-  - La tabla `VisionPipelineLog` almacena identidad del operador, contexto del cliente, referencias a blobs y payloads JSONB de OCR/barcode.
-  - El script [`scripts/create_table_VisionPipelineLog.sql`](./scripts/create_table_VisionPipelineLog.sql) crea la tabla con índices para trazabilidad y análisis.
+  - La tabla `vision_pipeline_log` almacena identidad del operador, contexto del cliente, referencias a blobs y payloads JSONB de OCR/barcode.
+  - El script [`scripts/vision_pipeline_log.sql`](./scripts/vision_pipeline_log.sql) crea la tabla con índices para trazabilidad y análisis.
 
 ## Variables de entorno clave
 | Variable | Descripción |
