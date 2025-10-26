@@ -89,15 +89,15 @@ func azure functionapp publish $APP
 # Create database via Azure console 
 # Admin user: admin_psql
 # Password: Find it in local.settings.json POSTGRES_URL
-# Table: create_table_VisionPipelineLog.sql
+# Table: vision_pipeline_log.sql
 # POSTGRES_URL
 postgresql://<USER>:<PWD>@<HOST>:5432/<DBNAME>
 
 --------- SQL
 psql "host=psql-vision-pipeline-tfm.postgres.database.azure.com port=5432 dbname=postgres user=admin_psql password=<PWD> sslmode=require" <-- To connect
-SELECT * FROM public."VisionPipelineLog"; <-- Queries (don't forget ;)
+SELECT * FROM public."vision_pipeline_log.sql"; <-- Queries (don't forget ;)
 \dt <-- To see all tables
 \di <-- To see all indexes
-\d "VisionPipelineLog" <-- To see VisionPipelineLog table
+\d "vision_pipeline_log.sql" <-- To see vision_pipeline_log.sql table
 
 
