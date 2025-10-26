@@ -45,6 +45,7 @@ Las funciones se describen en los archivos `function.json` correspondientes para
 | `ADJ_CLAHE_CLIP`, `ADJ_CLAHE_TILE` | Parámetros opcionales para ajustar CLAHE en `adjust_contrast_brightness`. |
 | `AZURE_OCR_ENDPOINT`, `AZURE_OCR_KEY` | Configuración del servicio Azure Computer Vision utilizado por `run_ocr`. |
 | `POSTGRES_URL` | Cadena de conexión a PostgreSQL consumida por `persist_run`. |
+| `SENTINEL_SKIP_VALIDATION` | Centinila para evitar validación de campos en `validate_extracted_data`. |
 
 Las variables adicionales requeridas por Azure Functions (por ejemplo claves de función) se gestionan mediante `local.settings.json` o las configuraciones de la Function App.
 

@@ -1,8 +1,9 @@
 import json
 import logging
+import os
 
-# Sentinel meaning "do not validate this field"
-SENTINEL_SKIP_VALIDATION = "N/A"
+# This is used to skip validation for specific fields
+_SENTINEL_SKIP_VALIDATION = str(os.getenv("SENTINEL_SKIP_VALIDATION", "N/A"))
 
 def _safe_upper(s: str) -> str:
     return (s or "").upper()
@@ -35,18 +36,18 @@ def _extract_ocr_text(ocr_result: dict) -> dict:
     logging.info("[validate_extracted_data] Extracted OCR text: '%s'", full)
     return {"full": full, "full_ns": full_ns}
 
-def _is_sentinel(value: str) -> bool:
+def _is_sentinel(value: str | None) -> bool:
     """
     True if the provided expected value means 'skip validation'.
     """
     if not value:
         return False
-    return value.strip().upper() == SENTINEL_SKIP_VALIDATION.upper()
+    return value.strip().upper() == _SENTINEL_SKIP_VALIDATION.upper()
 
 def _contains_robust(hay_full: str, hay_full_ns: str, needle: str) -> bool:
     """
     True if needle appears in OCR with the following rules:
-    1. If needle is SENTINEL_SKIP_VALIDATION, always return True (skip validation)
+    1. If needle is _SENTINEL_SKIP_VALIDATION, always return True (skip validation)
     2. Try to find needle as-is (case-insensitive) or normalized (no spaces)
     3. If not found and needle contains spaces, split by spaces and search each component
        - All components must be found for validation to pass
@@ -58,7 +59,7 @@ def _contains_robust(hay_full: str, hay_full_ns: str, needle: str) -> bool:
     if _is_sentinel(needle):
         logging.info(
             "[validate_extracted_data] Sentinel '%s' detected for '%s' - validation bypassed (True)",
-            SENTINEL_SKIP_VALIDATION,
+            _SENTINEL_SKIP_VALIDATION,
             needle,
         )
         return True
@@ -114,7 +115,7 @@ def main(payload: dict) -> dict:
     {
       "ocr": {...},
       "barcode": {"barcodeData": {...}},
-      "expected": {"order": "...", "batch": "...", "expiry": "..."}
+      "expectedData": {"prodCode": "...", "prodDesc": "...", "lot": "...", "expDate": "...", "packDate": "..."}
     }
     """
     logging.info("[validate_extracted_data] Starting validation")
@@ -127,34 +128,34 @@ def main(payload: dict) -> dict:
     ocr_container = payload.get("ocr") or {}
     ocr_result = ocr_container.get("ocrResult") or {}
     barcode = payload.get("barcode") or {}
-    expected_data = payload.get("expected") or {}
+    expected_data = payload.get("expectedData") or {}
 
     # Extract OCR text surfaces
     ocr_text = _extract_ocr_text(ocr_result)
     full, full_ns = ocr_text["full"], ocr_text["full_ns"]
 
     # Expected fields
-    exp_order = expected_data.get("order", "")
-    exp_batch = expected_data.get("batch", "")
-    exp_expiry = expected_data.get("expiry", "")
+    expected_lot = expected_data.get("lot", "")
+    expected_exp_date = expected_data.get("expDate", "")
+    expected_pack_date = expected_data.get("packDate", "")
 
     logging.info(
-        "[validate_extracted_data] Expected: order='%s', batch='%s', expiry='%s'",
-        exp_order,
-        exp_batch,
-        exp_expiry,
+        "[validate_extracted_data] ExpectedData: lot='%s', expDate='%s', packDate='%s'",
+        expected_lot,
+        expected_exp_date,
+        expected_pack_date,
     )
 
     # Search expected values in OCR text
-    order_ok = _contains_robust(full, full_ns, exp_order)
-    batch_ok = _contains_robust(full, full_ns, exp_batch)
-    expiry_ok = _contains_robust(full, full_ns, exp_expiry)
+    lot_ok = _contains_robust(full, full_ns, expected_lot)
+    exp_date_ok = _contains_robust(full, full_ns, expected_exp_date)
+    pack_date_ok = _contains_robust(full, full_ns, expected_pack_date)
 
     logging.info(
-        "[validate_extracted_data] OCR validation: order=%s, batch=%s, expiry=%s",
-        order_ok,
-        batch_ok,
-        expiry_ok,
+        "[validate_extracted_data] OCR validation: lot=%s, expDate=%s, packDate=%s",
+        lot_ok,
+        exp_date_ok,
+        pack_date_ok,
     )
 
     # Barcode validation
@@ -183,16 +184,16 @@ def main(payload: dict) -> dict:
 
     # validationSummary is true only if ALL validations pass
     validation_summary = all(
-        [order_ok, batch_ok, expiry_ok, barcode_ok]
+        [lot_ok, exp_date_ok, pack_date_ok, barcode_ok]
     )
 
     result = {
-        "orderOK": order_ok,
-        "batchOK": batch_ok,
-        "expiryOK": expiry_ok,
-        "barcodeDetectedOK": barcode_detected_ok,
-        "barcodeLegibleOK": barcode_legible_ok,
-        "barcodeOK": barcode_ok,
+        "lotOk": lot_ok,
+        "expDateOk": exp_date_ok,
+        "packDateOk": pack_date_ok,
+        "barcodeDetectedOk": barcode_detected_ok,
+        "barcodeLegibleOk": barcode_legible_ok,
+        "barcodeOk": barcode_ok,
         "validationSummary": validation_summary,
     }
 

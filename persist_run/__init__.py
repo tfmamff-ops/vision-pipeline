@@ -1,6 +1,5 @@
 import os
 import psycopg  # psycopg v3
-from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 POSTGRES_URL = os.environ["POSTGRES_URL"]  # e.g., "postgresql://user:pass@host:5432/dbname"
@@ -35,119 +34,123 @@ def main(ref: dict) -> dict:
 
     # UPSERT
     sql = """
-    INSERT INTO "VisionPipelineLog" (
-      "instanceId","createdAt","finishedAt",
-      "requestedByUserId","requestedByUserName","requestedByUserRole","requestedByUserEmail",
-      "clientAppVersion","clientIp","clientUserAgent","requestContextPayload",
-      "inputContainer","inputBlobName",
-      "item","itemDesc",
-      "expectedOrder","expectedBatch","expectedExpiry",
-      "validationOrderOK","validationBatchOK","validationExpiryOK",
-      "validationBarcodeDetectedOK","validationBarcodeLegibleOK","validationBarcodeOK",
-      "validationSummary",
-      "processedImageContainer","processedImageBlobName",
-      "ocrOverlayContainer","ocrOverlayBlobName",
-      "barcodeOverlayContainer","barcodeOverlayBlobName",
-      "barcodeRoiContainer","barcodeRoiBlobName",
-      "ocrPayload","barcodePayload"
+    INSERT INTO vision_pipeline_log (
+      instance_id, created_at, finished_at,
+      requested_by_user_id, requested_by_user_name, requested_by_user_role, requested_by_user_email,
+      client_app_version, client_ip, client_user_agent, request_context_payload,
+      input_container, input_blob_name,
+      expected_prod_code, expected_prod_desc,
+      expected_lot, expected_exp_date, expected_pack_date,
+      validation_lot_ok, validation_exp_date_ok, validation_pack_date_ok, 
+      validation_barcode_detected_ok, validation_barcode_legible_ok, validation_barcode_ok,
+      validation_summary,
+      processed_image_container, processed_image_blob_name,
+      ocr_overlay_container, ocr_overlay_blob_name,
+      barcode_overlay_container, barcode_overlay_blob_name,
+      barcode_roi_container, barcode_roi_blob_name,
+      ocr_payload, barcode_payload
     ) VALUES (
-      %(instanceId)s,%(createdAt)s, now(),
-  %(requestedByUserId)s,%(requestedByUserName)s,%(requestedByUserRole)s,%(requestedByUserEmail)s,
-      %(clientAppVersion)s,%(clientIp)s,%(clientUserAgent)s,%(requestContextPayload)s,
-      %(inputContainer)s,%(inputBlobName)s,
-  %(item)s,%(itemDesc)s,
-      %(expectedOrder)s,%(expectedBatch)s,%(expectedExpiry)s,
-      %(validationOrderOK)s,%(validationBatchOK)s,%(validationExpiryOK)s,
-      %(validationBarcodeDetectedOK)s,%(validationBarcodeLegibleOK)s,%(validationBarcodeOK)s,
-      %(validationSummary)s,
-      %(processedImageContainer)s,%(processedImageBlobName)s,
-      %(ocrOverlayContainer)s,%(ocrOverlayBlobName)s,
-      %(barcodeOverlayContainer)s,%(barcodeOverlayBlobName)s,
-      %(barcodeRoiContainer)s,%(barcodeRoiBlobName)s,
-      %(ocrPayload)s,%(barcodePayload)s
+      %(instance_id)s, %(created_at)s, now(),
+      %(requested_by_user_id)s, %(requested_by_user_name)s, %(requested_by_user_role)s, %(requested_by_user_email)s,
+      %(client_app_version)s, %(client_ip)s, %(client_user_agent)s, %(request_context_payload)s,
+      %(input_container)s, %(input_blob_name)s,
+      %(expected_prod_code)s, %(expected_prod_desc)s,
+      %(expected_lot)s, %(expected_exp_date)s, %(expected_pack_date)s, 
+      %(validation_lot_ok)s, %(validation_exp_date_ok)s, %(validation_pack_date_ok)s,
+      %(validation_barcode_detected_ok)s, %(validation_barcode_legible_ok)s, %(validation_barcode_ok)s,
+      %(validation_summary)s,
+      %(processed_image_container)s, %(processed_image_blob_name)s,
+      %(ocr_overlay_container)s, %(ocr_overlay_blob_name)s,
+      %(barcode_overlay_container)s, %(barcode_overlay_blob_name)s,
+      %(barcode_roi_container)s, %(barcode_roi_blob_name)s,
+      %(ocr_payload)s, %(barcode_payload)s
     )
-    ON CONFLICT ("instanceId") DO UPDATE SET
-      "finishedAt" = now(),
-      "requestedByUserId"    = EXCLUDED."requestedByUserId",
-      "requestedByUserName"  = EXCLUDED."requestedByUserName",
-      "requestedByUserRole"  = EXCLUDED."requestedByUserRole",
-      "requestedByUserEmail" = EXCLUDED."requestedByUserEmail",
-      "clientAppVersion"     = EXCLUDED."clientAppVersion",
-      "clientIp"             = EXCLUDED."clientIp",
-      "clientUserAgent"      = EXCLUDED."clientUserAgent",
-      "requestContextPayload"= EXCLUDED."requestContextPayload",
-      "item" = EXCLUDED."item",
-      "itemDesc" = EXCLUDED."itemDesc",
-      "validationOrderOK" = EXCLUDED."validationOrderOK",
-      "validationBatchOK" = EXCLUDED."validationBatchOK",
-      "validationExpiryOK" = EXCLUDED."validationExpiryOK",
-      "validationBarcodeDetectedOK" = EXCLUDED."validationBarcodeDetectedOK",
-      "validationBarcodeLegibleOK" = EXCLUDED."validationBarcodeLegibleOK",
-      "validationBarcodeOK" = EXCLUDED."validationBarcodeOK",
-      "validationSummary" = EXCLUDED."validationSummary",
-      "processedImageContainer" = EXCLUDED."processedImageContainer",
-      "processedImageBlobName"  = EXCLUDED."processedImageBlobName",
-      "ocrOverlayContainer"     = EXCLUDED."ocrOverlayContainer",
-      "ocrOverlayBlobName"      = EXCLUDED."ocrOverlayBlobName",
-      "barcodeOverlayContainer" = EXCLUDED."barcodeOverlayContainer",
-      "barcodeOverlayBlobName"  = EXCLUDED."barcodeOverlayBlobName",
-      "barcodeRoiContainer"     = EXCLUDED."barcodeRoiContainer",
-      "barcodeRoiBlobName"      = EXCLUDED."barcodeRoiBlobName",
-      "ocrPayload"              = EXCLUDED."ocrPayload",
-      "barcodePayload"          = EXCLUDED."barcodePayload";
+    ON CONFLICT (instance_id) DO UPDATE SET
+      finished_at = now(),
+      requested_by_user_id = EXCLUDED.requested_by_user_id,
+      requested_by_user_name = EXCLUDED.requested_by_user_name,
+      requested_by_user_role = EXCLUDED.requested_by_user_role,
+      requested_by_user_email = EXCLUDED.requested_by_user_email,
+      client_app_version = EXCLUDED.client_app_version,
+      client_ip = EXCLUDED.client_ip,
+      client_user_agent = EXCLUDED.client_user_agent,
+      request_context_payload = EXCLUDED.request_context_payload,
+      expected_prod_code = EXCLUDED.expected_prod_code,
+      expected_prod_desc = EXCLUDED.expected_prod_desc,
+      expected_lot = EXCLUDED.expected_lot,
+      expected_exp_date = EXCLUDED.expected_exp_date,
+      expected_pack_date = EXCLUDED.expected_pack_date,
+      validation_lot_ok = EXCLUDED.validation_lot_ok,
+      validation_exp_date_ok = EXCLUDED.validation_exp_date_ok,
+      validation_pack_date_ok = EXCLUDED.validation_pack_date_ok,
+      validation_barcode_detected_ok = EXCLUDED.validation_barcode_detected_ok,
+      validation_barcode_legible_ok = EXCLUDED.validation_barcode_legible_ok,
+      validation_barcode_ok = EXCLUDED.validation_barcode_ok,
+      validation_summary = EXCLUDED.validation_summary,
+      processed_image_container = EXCLUDED.processed_image_container,
+      processed_image_blob_name = EXCLUDED.processed_image_blob_name,
+      ocr_overlay_container = EXCLUDED.ocr_overlay_container,
+      ocr_overlay_blob_name = EXCLUDED.ocr_overlay_blob_name,
+      barcode_overlay_container = EXCLUDED.barcode_overlay_container,
+      barcode_overlay_blob_name = EXCLUDED.barcode_overlay_blob_name,
+      barcode_roi_container = EXCLUDED.barcode_roi_container,
+      barcode_roi_blob_name = EXCLUDED.barcode_roi_blob_name,
+      ocr_payload = EXCLUDED.ocr_payload,
+      barcode_payload = EXCLUDED.barcode_payload;
     """
 
     params = {
-      "instanceId": instance_id,
-      "createdAt": created_time,
+      "instance_id": instance_id,
+      "created_at": created_time,
 
       # Who initiated the run
-      "requestedByUserId": (req_user.get("id")),
-      "requestedByUserName": req_user.get("name"),
-      "requestedByUserRole": req_user.get("role"),
-      "requestedByUserEmail": req_user.get("email"),
-      "clientAppVersion": req_client.get("appVersion"),
-      "clientIp": req_client.get("ip"),
-      "clientUserAgent": req_client.get("userAgent"),
-      "requestContextPayload": Jsonb(req_ctx) if req_ctx else None,
+      "requested_by_user_id": req_user.get("id"),
+      "requested_by_user_name": req_user.get("name"),
+      "requested_by_user_role": req_user.get("role"),
+      "requested_by_user_email": req_user.get("email"),
+      "client_app_version": req_client.get("appVersion"),
+      "client_ip": req_client.get("ip"),
+      "client_user_agent": req_client.get("userAgent"),
+      "request_context_payload": Jsonb(req_ctx) if req_ctx else None,
 
-      "inputContainer": input_obj.get("container"),
-      "inputBlobName":  input_obj.get("blobName"),
+      "input_container": input_obj.get("container"),
+      "input_blob_name": input_obj.get("blobName"),
 
-      "item": expected.get("item"),
-      "itemDesc": expected.get("itemDesc"),
+      # Expected product data
+      "expected_prod_code": expected.get("prodCode"),
+      "expected_prod_desc": expected.get("prodDesc"),
+      "expected_lot": expected.get("lot"),
+      "expected_exp_date": expected.get("expDate"),
+      "expected_pack_date": expected.get("packDate"),
 
-      "expectedOrder": expected.get("order"),
-      "expectedBatch": expected.get("batch"),
-      "expectedExpiry": expected.get("expiry"),
+      # Validation flags
+      "validation_lot_ok": val.get("lotOk"),
+      "validation_exp_date_ok": val.get("expDateOk"),
+      "validation_pack_date_ok": val.get("packDateOk"),
+      "validation_barcode_detected_ok": val.get("barcodeDetectedOk"),
+      "validation_barcode_legible_ok": val.get("barcodeLegibleOk"),
+      "validation_barcode_ok": val.get("barcodeOk"),
+      "validation_summary": val.get("validationSummary"),
 
-      "validationOrderOK":           val.get("orderOK"),
-      "validationBatchOK":           val.get("batchOK"),
-      "validationExpiryOK":          val.get("expiryOK"),
-      "validationBarcodeDetectedOK": val.get("barcodeDetectedOK"),
-      "validationBarcodeLegibleOK":  val.get("barcodeLegibleOK"),
-      "validationBarcodeOK":         val.get("barcodeOK"),
-      "validationSummary":           val.get("validationSummary"),
+      "processed_image_container": proc_blob.get("container"),
+      "processed_image_blob_name": proc_blob.get("blobName"),
 
-      "processedImageContainer": proc_blob.get("container"),
-      "processedImageBlobName":  proc_blob.get("blobName"),
+      "ocr_overlay_container": ocr_overlay.get("container"),
+      "ocr_overlay_blob_name": ocr_overlay.get("blobName"),
 
-      "ocrOverlayContainer": ocr_overlay.get("container"),
-      "ocrOverlayBlobName":  ocr_overlay.get("blobName"),
+      "barcode_overlay_container": bc_overlay.get("container"),
+      "barcode_overlay_blob_name": bc_overlay.get("blobName"),
 
-      "barcodeOverlayContainer": bc_overlay.get("container"),
-      "barcodeOverlayBlobName":  bc_overlay.get("blobName"),
-
-      "barcodeRoiContainer": bc_roi.get("container"),
-      "barcodeRoiBlobName":  bc_roi.get("blobName"),
+      "barcode_roi_container": bc_roi.get("container"),
+      "barcode_roi_blob_name": bc_roi.get("blobName"),
 
       # Wrap dicts in Jsonb for psycopg3 to convert to PostgreSQL JSONB
-      "ocrPayload": Jsonb(ocr) if ocr else None,
-      "barcodePayload": Jsonb(barcode) if barcode else None,
+      "ocr_payload": Jsonb(ocr) if ocr else None,
+      "barcode_payload": Jsonb(barcode) if barcode else None,
     }
 
     with psycopg.connect(POSTGRES_URL) as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
+        with conn.cursor() as cur:
             cur.execute(sql, params)
         conn.commit()
 

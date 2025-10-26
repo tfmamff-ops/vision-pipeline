@@ -10,11 +10,11 @@ async def main(req: func.HttpRequest, starter: str) -> func.HttpResponse:
         "container": "input",
         "blobName": "uploads/archivo.png",
         "expectedData": {
-            "item": "EUTEBROL-A7E0",
-            "itemDesc": "EUTEBROL DUO",
-            "batch": "S 101144",
-            "expiry": "V JUL/2027",
-            "order": "E JUL/2025"
+            "prodCode": "EUTEBROL-A7E0",
+            "prodDesc": "EUTEBROL DUO",
+            "lot": "S 101144",
+            "expDate": "V JUL/2027",
+            "packDate": "E JUL/2025"
         },
         "requestContext": {
             "user": {
@@ -57,7 +57,7 @@ async def main(req: func.HttpRequest, starter: str) -> func.HttpResponse:
         if not isinstance(expected_data, dict) or not expected_data:
             missing.append("expectedData")
 
-        # Strict requirement: identity must be present because DB enforces NOT NULL
+        # Identity must be present because DB enforces NOT NULL
         user_id = None
         if isinstance(request_context, dict):
             user = request_context.get("user") or {}
@@ -69,7 +69,7 @@ async def main(req: func.HttpRequest, starter: str) -> func.HttpResponse:
             msg = {
                 "error": "Bad Request",
                 "missing": missing,
-                "hint": "Expected container='input', blobName, expectedData{item, itemDesc, order, batch, expiry}, requestContext.user.id"
+                "hint": "Expected container='input', blobName, expectedData{prodCode, prodDesc, lot, expDate, packDate}, requestContext.user.id"
             }
             logging.warning("[http_start] Validation failed: %s", msg)
             response = func.HttpResponse(

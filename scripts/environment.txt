@@ -49,8 +49,11 @@ $BLOB_URL="https://$STO.blob.core.windows.net"
 $KEY = az storage account keys list -g $RG -n $STO --query "[0].value" -o tsv
 
 # CLAHE
-$CLIP = 2.0
-$TILE = 8
+$CLIP=2.0
+$TILE=8
+
+# Sentinel
+$SEN="N/A"
 
 # Save to Function App Application settings
 az functionapp config appsettings set -g $RG -n $APP --settings `
@@ -58,6 +61,7 @@ az functionapp config appsettings set -g $RG -n $APP --settings `
   BLOB_ACCOUNT_URL=$BLOB_URL `
   ADJ_CLAHE_CLIP=$CLIP `
   ADJ_CLAHE_TILE=$TILE `
+  SENTINEL_SKIP_VALIDATION=$SEN `
   BLOB_ACCOUNT_KEY=$KEY
   
 # Create OCR service via console with these details:

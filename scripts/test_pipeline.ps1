@@ -36,9 +36,9 @@ $startReq = @{
   container = "input"
   blobName = $BLOB_NAME
   expectedData = @{
-    order = "M-AR-23-00219"
-    batch = "L 97907"
-    expiry = "JUN/2026"
+    lot = "S 101144"
+    expDate = "V JUL/2027"
+    packDate = "E JUL/2025"
   }
   requestContext = @{
     user = @{

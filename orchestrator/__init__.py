@@ -2,31 +2,31 @@ import azure.durable_functions as df
 
 def orchestrator_function(context: df.DurableOrchestrationContext):
     """
-    Input:
-      {
+    Accepts JSON with blob reference, expected data, and requester context:
+    {
         "container": "input",
         "blobName": "uploads/archivo.png",
         "expectedData": {
-            "item": "EUTEBROL-A7E0",
-            "itemDesc": "EUTEBROL DUO",
-            "batch": "S 101144",
-            "expiry": "V JUL/2027",
-            "order": "E JUL/2025"
+            "prodCode": "EUTEBROL-A7E0",
+            "prodDesc": "EUTEBROL DUO",
+            "lot": "S 101144",
+            "expDate": "V JUL/2027",
+            "packDate": "E JUL/2025"
         },
         "requestContext": {
-          "user": {
-            "id": "auth0|9a0812ffb13",      # Stable unique ID from auth provider (e.g. Auth0, Azure AD, Firebase)
-            "name": "Bob Operator",         # Optional for audit/log display
-            "email": "operator.qa@lab.com", # Optional for audit/log display
-            "role": "qa_operator"           # Functional role (admin, auditor, operator, etc.)
-          },
-          "client": {
-            "appVersion": "web-1.0.0",      # Frontend or mobile app version
-            "ip": "127.0.0.1",              # Public IP as seen by backend API
-            "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"  # Browser or device info
-          }
+            "user": {
+                "id": "auth0|9a0812ffb13",
+                "name": "Bob Operator",
+                "email": "operator.qa@lab.com",
+                "role": "qa_operator"
+            },
+            "client": {
+                "appVersion": "web-1.0.0",
+                "ip": "127.0.0.1",
+                "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+            }
         }
-      }
+    }
     """
 
     ref_in = context.get_input()
@@ -45,7 +45,7 @@ def orchestrator_function(context: df.DurableOrchestrationContext):
     payload = {
         "ocr": ocr_out,
         "barcode": bc_out,
-        "expected": ref_in["expectedData"]
+        "expectedData": ref_in["expectedData"]
     }
 
     val_out = yield context.call_activity("validate_extracted_data", payload)
