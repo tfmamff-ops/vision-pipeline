@@ -89,6 +89,7 @@ func azure functionapp publish $APP
 # Create database via Azure console 
 # Admin user: admin_psql
 # Password: Find it in local.settings.json POSTGRES_URL
+# Schema: vision
 # Table: vision_pipeline_log.sql
 # POSTGRES_URL
 postgresql://<USER>:<PWD>@<HOST>:5432/<DBNAME>

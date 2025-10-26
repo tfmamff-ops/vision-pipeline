@@ -34,7 +34,7 @@ def main(ref: dict) -> dict:
 
     # UPSERT
     sql = """
-    INSERT INTO vision_pipeline_log (
+    INSERT INTO vision.vision_pipeline_log (
       instance_id, created_at, finished_at,
       requested_by_user_id, requested_by_user_name, requested_by_user_role, requested_by_user_email,
       client_app_version, client_ip, client_user_agent, request_context_payload,

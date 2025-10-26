@@ -3,7 +3,9 @@
 -- Compatible with Azure Database for PostgreSQL (v12+).
 -- Safe to execute multiple times (uses IF NOT EXISTS).
 
-CREATE TABLE IF NOT EXISTS vision_pipeline_log (
+CREATE SCHEMA IF NOT EXISTS vision;
+
+CREATE TABLE IF NOT EXISTS vision.vision_pipeline_log (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   instance_id text UNIQUE NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -60,86 +62,82 @@ CREATE TABLE IF NOT EXISTS vision_pipeline_log (
   )
 );
 
--- Basic indexes
+-- === Indexes ===
 CREATE INDEX IF NOT EXISTS vpl_created_idx
-  ON vision_pipeline_log (created_at);
+  ON vision.vision_pipeline_log (created_at);
 
 CREATE INDEX IF NOT EXISTS vpl_valsum_idx
-  ON vision_pipeline_log (validation_summary);
+  ON vision.vision_pipeline_log (validation_summary);
 
--- Composite index for common query pattern (date range + validation filter)
 CREATE INDEX IF NOT EXISTS vpl_date_valsum_idx
-  ON vision_pipeline_log (created_at, validation_summary);
+  ON vision.vision_pipeline_log (created_at, validation_summary);
 
 CREATE INDEX IF NOT EXISTS vpl_user_idx
-  ON vision_pipeline_log (requested_by_user_id);
+  ON vision.vision_pipeline_log (requested_by_user_id);
 
 CREATE INDEX IF NOT EXISTS vpl_user_date_idx
-  ON vision_pipeline_log (requested_by_user_id, created_at);
+  ON vision.vision_pipeline_log (requested_by_user_id, created_at);
 
 CREATE INDEX IF NOT EXISTS vpl_userrole_idx
-  ON vision_pipeline_log (requested_by_user_role);
+  ON vision.vision_pipeline_log (requested_by_user_role);
 
 CREATE INDEX IF NOT EXISTS vpl_appver_idx
-  ON vision_pipeline_log (client_app_version);
+  ON vision.vision_pipeline_log (client_app_version);
 
--- Lookups by medication code declared by the operator
 CREATE INDEX IF NOT EXISTS vpl_expected_code_idx
-  ON vision_pipeline_log (expected_prod_code);
+  ON vision.vision_pipeline_log (expected_prod_code);
 
--- Common filter: product code within date range
 CREATE INDEX IF NOT EXISTS vpl_expected_code_date_idx
-  ON vision_pipeline_log (expected_prod_code, created_at);
+  ON vision.vision_pipeline_log (expected_prod_code, created_at);
 
--- JSON search indexes
 CREATE INDEX IF NOT EXISTS vpl_ocr_gin_idx
-  ON vision_pipeline_log USING GIN (ocr_payload);
+  ON vision.vision_pipeline_log USING GIN (ocr_payload);
 
 CREATE INDEX IF NOT EXISTS vpl_barcode_gin_idx
-  ON vision_pipeline_log USING GIN (barcode_payload);
+  ON vision.vision_pipeline_log USING GIN (barcode_payload);
 
--- Documentation
-COMMENT ON TABLE vision_pipeline_log IS
+-- === Documentation ===
+COMMENT ON TABLE vision.vision_pipeline_log IS
 'Vision pipeline execution audit log including OCR and barcode validation results, operator identity, and client metadata.';
 
-COMMENT ON COLUMN vision_pipeline_log.instance_id IS
+COMMENT ON COLUMN vision.vision_pipeline_log.instance_id IS
 'Durable Functions orchestration instance ID (unique identifier).';
 
-COMMENT ON COLUMN vision_pipeline_log.requested_by_user_id IS
+COMMENT ON COLUMN vision.vision_pipeline_log.requested_by_user_id IS
 'Stable unique user ID from the authentication provider who initiated this pipeline run.';
 
-COMMENT ON COLUMN vision_pipeline_log.requested_by_user_name IS
+COMMENT ON COLUMN vision.vision_pipeline_log.requested_by_user_name IS
 'Human-readable snapshot of the user name at execution time (e.g. "Bob Smith").';
 
-COMMENT ON COLUMN vision_pipeline_log.requested_by_user_role IS
+COMMENT ON COLUMN vision.vision_pipeline_log.requested_by_user_role IS
 'Role of the requester at execution time (qa_operator, auditor, admin, etc.).';
 
-COMMENT ON COLUMN vision_pipeline_log.requested_by_user_email IS
+COMMENT ON COLUMN vision.vision_pipeline_log.requested_by_user_email IS
 'Email of the requester at execution time, stored for human-readable audits or reports.';
 
-COMMENT ON COLUMN vision_pipeline_log.client_app_version IS
+COMMENT ON COLUMN vision.vision_pipeline_log.client_app_version IS
 'Version of the frontend or mobile client used to trigger this run (e.g. "web-1.0.0").';
 
-COMMENT ON COLUMN vision_pipeline_log.client_ip IS
+COMMENT ON COLUMN vision.vision_pipeline_log.client_ip IS
 'Public IP address observed by the backend when the request was received.';
 
-COMMENT ON COLUMN vision_pipeline_log.client_user_agent IS
+COMMENT ON COLUMN vision.vision_pipeline_log.client_user_agent IS
 'User agent string of the client (browser or device signature).';
 
-COMMENT ON COLUMN vision_pipeline_log.request_context_payload IS
+COMMENT ON COLUMN vision.vision_pipeline_log.request_context_payload IS
 'Full requestContext (user + client) as received, stored as JSONB for forensic traceability.';
 
-COMMENT ON COLUMN vision_pipeline_log.expected_prod_code IS
+COMMENT ON COLUMN vision.vision_pipeline_log.expected_prod_code IS
 'Medication code provided in expectedData (declared by the operator as ground truth).';
 
-COMMENT ON COLUMN vision_pipeline_log.expected_prod_desc IS
+COMMENT ON COLUMN vision.vision_pipeline_log.expected_prod_desc IS
 'Medication description/name provided in expectedData (declared by the operator as ground truth).';
 
-COMMENT ON COLUMN vision_pipeline_log.validation_summary IS
+COMMENT ON COLUMN vision.vision_pipeline_log.validation_summary IS
 'Overall validation result: true if all individual checks passed.';
 
-COMMENT ON COLUMN vision_pipeline_log.ocr_payload IS
+COMMENT ON COLUMN vision.vision_pipeline_log.ocr_payload IS
 'Full Azure Computer Vision OCR response (JSONB).';
 
-COMMENT ON COLUMN vision_pipeline_log.barcode_payload IS
+COMMENT ON COLUMN vision.vision_pipeline_log.barcode_payload IS
 'Full barcode detection and decoding result (JSONB).';

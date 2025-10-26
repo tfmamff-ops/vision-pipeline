@@ -1,8 +1,8 @@
 {
   "name": "orchestrator",
-  "instanceId": "2b2e942f75b34fe6bff5314ec07f813e",
+  "instanceId": "b60fea96644a47b195ed7f3b61e72200",
   "runtimeStatus": "Completed",
-  "input": "{\"container\": \"input\", \"blobName\": \"uploads/6fa8a9a5-02bd-4ac6-9eda-c6ec1b2c65c9.png\", \"expectedData\": {\"packDate\": \"V JUN/2026\", \"prodCode\": \"EUTEBROL-A7E0\", \"lot\": \"M-AR-23-00219\", \"expDate\": \"L 97907\", \"prodDesc\": \"EUTEBROL DUO\"}, \"requestContext\": {\"user\": {\"name\": \"Bob Operator\", \"id\": \"auth0|9a0812ffb13\", \"email\": \"operator.qa@lab.com\", \"role\": \"qa_operator\"}, \"client\": {\"appVersion\": \"web-1.0.0\", \"userAgent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64)\", \"ip\": \"127.0.0.1\"}}}",
+  "input": "{\"container\": \"input\", \"blobName\": \"uploads/ce70c6a0-8d5a-4d29-b05b-fd064c00e7c5.png\", \"expectedData\": {\"packDate\": \"V JUN/2026\", \"lot\": \"M-AR-23-00219\", \"prodDesc\": \"EUTEBROL DUO\", \"expDate\": \"L 97907\", \"prodCode\": \"EUTEBROL-A7E0\"}, \"requestContext\": {\"client\": {\"userAgent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64)\", \"ip\": \"127.0.0.1\", \"appVersion\": \"web-1.0.0\"}, \"user\": {\"name\": \"Bob Operator\", \"id\": \"auth0|9a0812ffb13\", \"email\": \"operator.qa@lab.com\", \"role\": \"qa_operator\"}}}",
   "customStatus": {
     "stage": "completed"
   },
@@ -203,11 +203,11 @@
     },
     "processedImageBlob": {
       "container": "output",
-      "blobName": "final/36ac782e-512a-4dc6-9048-da260550589f.png"
+      "blobName": "final/62c202b5-5dd6-4f1b-8f3c-a89013b4acaa.png"
     },
     "ocrOverlayBlob": {
       "container": "output",
-      "blobName": "final/overlay/d8b636c2-5b68-4535-9024-f66775a39368.png"
+      "blobName": "final/overlay/ad6659cc-badc-4efc-87f9-819e8dda1385.png"
     },
     "barcode": {
       "barcodeData": {
@@ -224,11 +224,11 @@
       },
       "barcodeOverlayBlob": {
         "container": "output",
-        "blobName": "barcode/overlay/f7e77713-604f-48e0-a2f8-551a011c33b9.png"
+        "blobName": "barcode/overlay/94c45abe-258a-497b-8294-62ef4e80278d.png"
       },
       "barcodeRoiBlob": {
         "container": "output",
-        "blobName": "barcode/roi/f7e77713-604f-48e0-a2f8-551a011c33b9.png"
+        "blobName": "barcode/roi/94c45abe-258a-497b-8294-62ef4e80278d.png"
       }
     },
     "validation": {
@@ -241,6 +241,6 @@
       "validationSummary": true
     }
   },
-  "createdTime": "2025-10-26T00:43:57Z",
-  "lastUpdatedTime": "2025-10-26T00:43:59Z"
+  "createdTime": "2025-10-26T01:04:35Z",
+  "lastUpdatedTime": "2025-10-26T01:04:46Z"
 }
