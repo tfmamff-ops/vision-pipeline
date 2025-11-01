@@ -100,8 +100,8 @@ def _draw_ocr_overlay(img_bytes, ocr_data):
 def main(ref: dict) -> dict:
     raw = download_bytes(ref["container"], ref["blobName"])
 
-    # Final copy to output/final/ocr/<uuid>.png
-    out_name = f"final/ocr/{uuid.uuid4()}.png"
+    # Final copy to output/final/ocr/processed/<uuid>.png
+    out_name = f"final/ocr/processed/{uuid.uuid4()}.png"
     upload_bytes("output", out_name, raw, "image/png")
 
     # OCR
