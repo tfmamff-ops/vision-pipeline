@@ -100,8 +100,8 @@ def _draw_ocr_overlay(img_bytes, ocr_data):
 def main(ref: dict) -> dict:
     raw = download_bytes(ref["container"], ref["blobName"])
 
-    # Final copy to output/final/<uuid>.png
-    out_name = f"final/{uuid.uuid4()}.png"
+    # Final copy to output/final/ocr/<uuid>.png
+    out_name = f"final/ocr/{uuid.uuid4()}.png"
     upload_bytes("output", out_name, raw, "image/png")
 
     # OCR
@@ -121,7 +121,7 @@ def main(ref: dict) -> dict:
     overlay_bytes, drawn_count = _draw_ocr_overlay(raw, data)
     
     if overlay_bytes and drawn_count > 0:
-        overlay_name = f"final/overlay/{uuid.uuid4()}.png"
+        overlay_name = f"final/ocr/overlay/{uuid.uuid4()}.png"
         upload_bytes("output", overlay_name, overlay_bytes, "image/png")
         overlay_blob = {"container": "output", "blobName": overlay_name}
         logging.info("[run_ocr] Uploaded OCR overlay with %d rectangles: %s", drawn_count, overlay_name)

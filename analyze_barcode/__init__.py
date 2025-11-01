@@ -79,8 +79,8 @@ def main(ref: dict) -> dict:
             "barcodeSymbology": str | None,
             "barcodeBox": [x,y,w,h] | None,
         },  
-        "barcodeOverlayBlob": {"container":"output","blobName":"barcode/overlay/<uuid>.png"} | None,
-        "barcodeRoiBlob": {"container":"output","blobName":"barcode/roi/<uuid>.png"} | None,
+        "barcodeOverlayBlob": {"container":"output","blobName":"final/barcode/overlay/<uuid>.png"} | None,
+        "barcodeRoiBlob": {"container":"output","blobName":"final/barcode/roi/<uuid>.png"} | None,
     }
     """
     try:
@@ -145,8 +145,8 @@ def main(ref: dict) -> dict:
 
         # 7) Upload both blobs
         uid = str(uuid.uuid4())
-        overlay_blob = f"barcode/overlay/{uid}.png"
-        roi_blob = f"barcode/roi/{uid}.png"
+        overlay_blob = f"final/barcode/overlay/{uid}.png"
+        roi_blob = f"final/barcode/roi/{uid}.png"
 
         upload_bytes("output", overlay_blob, _png_bytes(overlay), "image/png")
         upload_bytes("output", roi_blob, _png_bytes(roi), "image/png")
@@ -156,7 +156,7 @@ def main(ref: dict) -> dict:
         out = {
             "barcodeData": {
                 "barcodeDetected": True,
-                "barcodeLegible": bool(decoded_value),               # legible if text exists
+                "barcodeLegible": bool(decoded_value), 
                 "decodedValue": decoded_value,
                 "barcodeSymbology": symbology,
                 "barcodeBox": [x, y, bw, bh],
