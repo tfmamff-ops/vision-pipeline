@@ -8,7 +8,7 @@ cd C:\Alvaro\dev\tfm-dev\azure\vision-pipeline
 $RG="rg-vision-pipeline-tfm"
 $LOC="westus3" # Must be westus3 to use the free tier across all resources (Vision, Storage, and Database).
 $STO="stvision$(Get-Random)"     # Must be globally unique (lowercase letters and numbers only)
-$APP="func-vision-pipeline-tfm"  # Globally unique, use "agm"
+$APP="func-vision-pipeline-tfm"  # Globally unique
 
 az login
 
