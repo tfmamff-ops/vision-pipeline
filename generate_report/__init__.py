@@ -80,7 +80,7 @@ def get_report_replacements_and_image_paths(instance_id, user_comment, accepted)
         "processed_image": {
             "container": "output",
             "blobName": "final/ocr/processed/03de1e46-ede1-4354-a890-69b550c08c33.png",
-            "resizePercentage": 50,
+            "resizePercentage": 40,
         },
         "ocr_overlay_image": {
             "container": "output",
@@ -95,7 +95,7 @@ def get_report_replacements_and_image_paths(instance_id, user_comment, accepted)
         "barcode_roi_image": {
             "container": "output",
             "blobName": "final/barcode/roi/02d7cd2d-5913-4778-a7ea-b0093bb75f45.png",
-            "resizePercentage": 50,
+            "resizePercentage": 40,
         },
     }
 
