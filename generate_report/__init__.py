@@ -6,7 +6,8 @@ import io
 from shared_code.storage_util import download_bytes, upload_bytes
 import requests
 import logging
-
+import numpy as np
+import cv2
 
 import re
 from docx import Document
@@ -23,6 +24,7 @@ import sys
 TEMPLATES_CONTAINER = "report-templates"
 TEMPLATE_ACCEPT = "accept.docx"
 TEMPLATE_REJECT = "reject.docx"
+TEMPLATE_UNAVAILABLE_IMAGE = "unavailable_image.png"
 CLOUDMERSIVE_URL = "https://api.cloudmersive.com/convert/docx/to/pdf"
 CLOUDMERSIVE_API_KEY = "d2e4f77e-0140-4072-9390-1ffcfbe2b1e9"
 MIME_JSON = "application/json"
@@ -30,6 +32,7 @@ MIME_JSON = "application/json"
 # ----------------------------------------------------------------------
 # REPORT CONTENT PREPARATION
 # ----------------------------------------------------------------------
+
 def getReportReplacementsAndImagePaths(instanceId, userComment, accepted):
     """
     Prepares the replacements dictionary and image paths for the report generation.
@@ -116,21 +119,12 @@ def convert_docx_to_pdf_cloudmersive(docx_bytes: io.BytesIO, api_key: str) -> by
 def generate_verification_report_bytes(template: bytes, replacements: dict, image_paths: dict) -> io.BytesIO:
     """Generates a DOCX report from a template and returns it as an io.BytesIO object."""
     try:
-        # Asegurarse de que template sea bytes o BytesIO
-        if isinstance(template, bytes):
-            buf = io.BytesIO(template)
-        elif isinstance(template, io.BytesIO):
-            buf = template
-            buf.seek(0)
-        else:
-            logging.error("[generate_report] Unexpected template type: %s", type(template))
-            return None
-
+        buf = io.BytesIO(template)
         document = Document(buf)
     except Exception:
         logging.exception("[generate_report] Error loading DOCX template")
         return None
-
+    
     target_width_cm = 4.0
     target_width_emu = Cm(target_width_cm)
 
@@ -159,10 +153,10 @@ def generate_verification_report_bytes(template: bytes, replacements: dict, imag
             return
 
         for paragraph in paragraphs:
-            # De momento no metemos imágenes, solo texto
-            image_inserted = False  # <- IMPORTANTE: que arranque en False
+            # For now we do not insert images, only text
+            image_inserted = False  # IMPORTANT: must start in False
 
-            # 2. Text replacement (remaining placeholders {{...}})
+            # Text replacement (remaining placeholders {{...}})
             if not image_inserted:
                 full_text = "".join([run.text for run in paragraph.runs])
                 new_text = full_text
@@ -171,12 +165,12 @@ def generate_verification_report_bytes(template: bytes, replacements: dict, imag
                     new_text = new_text.replace(placeholder, str(value))
 
                 if new_text != full_text:
-                    # Limpiar runs y escribir con colores
+                    # Clear runs and write with colored symbols
                     for run in reversed(paragraph.runs):
                         paragraph._element.remove(run._element)
                     add_colored_text(paragraph, new_text)
 
-    # Iterar por todo el documento
+    # Iterate through the entire document
     for paragraph in document.paragraphs:
         replace_in_element(paragraph)
 
@@ -194,29 +188,89 @@ def generate_verification_report_bytes(template: bytes, replacements: dict, imag
 # IMAGE SUPPORT CODE
 # ----------------------------------------------------------------------
 
-def get_unavailable_image(width_px: int = 400, height_px: int = 300) -> io.BytesIO:
-    """Creates a PNG image with the text 'IMAGE NOT AVAILABLE'."""
-    width_px = 400
-    height_px = 300
-    img = PilImage.new('RGB', (width_px, height_px), color='#E0E0E0')
-    draw = ImageDraw.Draw(img)
-    font_size = 400
+def resize_by_percentage(img: np.ndarray, percentage: int) -> np.ndarray | None:
+    """
+    Scales an OpenCV image (ndarray) by a percentage.
+    Returns a resized ndarray or None if it fails.
+    """
+
+    if img is None:
+        logging.error("[resize_by_percentage] input image is None")
+        return None
+
+    if percentage <= 0:
+        logging.error("[resize_by_percentage] percentage must be > 0")
+        return None
+
+    scale = percentage / 100.0
+    new_w = int(img.shape[1] * scale)
+    new_h = int(img.shape[0] * scale)
+
+    if new_w == 0 or new_h == 0:
+        logging.error("[resize_by_percentage] resulting size is zero (%d×%d)", new_w, new_h)
+        return None
+
     try:
-        # Ensure the script can locate 'arial.ttf'
-        font = ImageFont.truetype("arial.ttf", font_size)
-    except IOError:
-        font = ImageFont.load_default()
-    text = "IMAGE NOT AVAILABLE"
-    left, top, right, bottom = draw.textbbox((0, 0), text, font)
-    textwidth = right - left
-    textheight = bottom - top
-    x = (width_px - textwidth) / 2
-    y = (height_px - textheight) / 2
-    draw.text((x, y), text, fill=(50, 50, 50), font=font)
-    img_byte_arr = io.BytesIO()
-    img.save(img_byte_arr, format='PNG')
-    img_byte_arr.seek(0)
-    return img_byte_arr
+        resized = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
+    except Exception as e:
+        logging.error("[resize_by_percentage] cv2.resize failed: %s", e)
+        return None
+
+    return resized
+
+def get_unavailable_image(resize_percentage: int = 50) -> io.BytesIO | None:
+    return get_image(
+        container=TEMPLATES_CONTAINER,
+        blob_name=TEMPLATE_UNAVAILABLE_IMAGE,
+        resize_percentage=resize_percentage
+    )
+        
+def get_image(container: str, blob_name: str, resize_percentage: int = 50) -> io.BytesIO | None:
+    """
+    Downloads an image, validates that it is an image,
+    uses resize_by_percentage(), and returns a PNG BytesIO.
+    """
+
+    # Download image from Blob
+    try:
+        img_bytes = download_bytes(container, blob_name)
+    except Exception as e:
+        logging.error("[generate_report] error downloading image: %s", e)
+        return None
+
+    if not img_bytes:
+        logging.error("[generate_report] image blob is empty")
+        return None
+
+    # Decode to ndarray
+    arr = np.frombuffer(img_bytes, dtype=np.uint8)
+    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+
+    if img is None:
+        logging.error("[generate_report] image is NOT a valid image (imdecode returned None)")
+        return None
+
+    logging.info(
+        "[generate_report] image OK: shape=%s dtype=%s",
+        img.shape,
+        img.dtype,
+    )
+
+    # Resize using the generic function
+    resized = resize_by_percentage(img, resize_percentage)
+    if resized is None:
+        logging.error("[generate_report] resize_by_percentage returned None")
+        return None
+
+    # Convert to PNG in BytesIO
+    success, encoded_png = cv2.imencode(".png", resized)
+    if not success:
+        logging.error("[generate_report] failed to encode resized image to PNG")
+        return None
+
+    buf = io.BytesIO(encoded_png.tobytes())
+    buf.seek(0)
+    return buf
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
 	"""
