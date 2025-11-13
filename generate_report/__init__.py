@@ -77,11 +77,26 @@ def getReportReplacementsAndImagePaths(instanceId, userComment, accepted):
     }
 
     image_paths = {
-        "input_image": "input_image.png",
-        "processed_image": "processed_image.png",
-        "ocr_overlay_image": "ocr_overlay_image.png",
-        "barcode_overlay_image": "barcode_overlay_image.png",
-        "barcode_roi_image": None,
+        "input_image": {
+            "container": "input",
+            "blobName": "uploads/0a0643fc-fd95-480f-94cc-459f21d03aeb.jpg",
+        },
+        "processed_image": {
+            "container": "output",
+            "blobName": "final/ocr/processed/03de1e46-ede1-4354-a890-69b550c08c33.png",
+        },
+        "ocr_overlay_image": {
+            "container": "output",
+            "blobName": "final/ocr/overlay/04f75521-4400-4d79-8e30-ded2952200a9.png",
+        },
+        "barcode_overlay_image": {
+            "container": "output",
+            "blobName": "final/barcode/overlay/02d7cd2d-5913-4778-a7ea-b0093bb75f45.png",
+        },
+        "barcode_roi_image": {
+            "container": "output",
+            "blobName": "final/barcode/roi/02d7cd2d-5913-4778-a7ea-b0093bb75f45.png",
+        },
     }
 
     return replacements, image_paths
@@ -139,9 +154,7 @@ def generate_verification_report_bytes(template: bytes, replacements: dict, imag
 
     def replace_in_element(element):
         """Replaces text and image placeholders in a paragraph or table cell."""
-        from docx.text.paragraph import Paragraph
-        from docx.table import Table
-
+        # Ensures iteration through all paragraphs if it's a table
         if isinstance(element, Paragraph):
             paragraphs = [element]
         elif isinstance(element, Table):
@@ -153,11 +166,48 @@ def generate_verification_report_bytes(template: bytes, replacements: dict, imag
             return
 
         for paragraph in paragraphs:
-            # For now we do not insert images, only text
-            image_inserted = False  # IMPORTANT: must start in False
+            # Combine all runs’ text to find placeholders
+            full_text = "".join([run.text for run in paragraph.runs])
+            image_inserted = False
 
-            # Text replacement (remaining placeholders {{...}})
+            # 1. Image replacement (placeholders {{..._image}})
+            # Loops to handle one image replacement per paragraph/cell,
+            # and removes previous runs.
+            for img_placeholder, img_path in image_paths.items():
+                token = f"{{{{{img_placeholder}}}}}"
+                if token in full_text:
+                    # Remove existing content before inserting image
+                    for run in reversed(paragraph.runs):
+                        paragraph._element.remove(run._element)
+
+                    final_img_source = None
+                    new_width_emu = target_width_emu
+                    new_height_emu = target_width_emu * (300 / 400)  # Default ratio for placeholder
+
+                    if img_path and os.path.exists(img_path):
+                        final_img_source = img_path
+                        try:
+                            img = PilImage.open(final_img_source)
+                            original_width, original_height = img.size
+                            aspect_ratio = original_height / original_width
+                            new_height_emu = new_width_emu * aspect_ratio
+                        except Exception as e:
+                            print(f"Warning: Unable to open real image '{img_path}'. Using 'Not Available' placeholder. Error: {e}")
+                            final_img_source = get_unavailable_image()
+                    else:
+                        print(f"Generating 'Not Available' placeholder for '{img_placeholder}' in memory.")
+                        final_img_source = get_unavailable_image()
+
+                    if final_img_source:
+                        run = paragraph.add_run()
+                        run.add_picture(final_img_source, width=new_width_emu, height=new_height_emu)
+                        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        image_inserted = True
+                    break
+
+            # 2. Text replacement (remaining placeholders {{...}})
             if not image_inserted:
+                # Recalculate text after possible run removals
                 full_text = "".join([run.text for run in paragraph.runs])
                 new_text = full_text
 
@@ -165,23 +215,24 @@ def generate_verification_report_bytes(template: bytes, replacements: dict, imag
                     new_text = new_text.replace(placeholder, str(value))
 
                 if new_text != full_text:
-                    # Clear runs and write with colored symbols
+                    # If text has changed, replace paragraph content
                     for run in reversed(paragraph.runs):
                         paragraph._element.remove(run._element)
                     add_colored_text(paragraph, new_text)
 
-    # Iterate through the entire document
+    # Iterate through all paragraphs and tables in the document
     for paragraph in document.paragraphs:
         replace_in_element(paragraph)
 
     for table in document.tables:
-        replace_in_element(table)
+        replace_in_element(table)  # Process each table
 
+    # Save the document to an in-memory byte buffer
     docx_stream = io.BytesIO()
     document.save(docx_stream)
     docx_stream.seek(0)
 
-    logging.info("[generate_report] DOCX report successfully generated in memory.")
+    print("\nDOCX report successfully generated in memory.")
     return docx_stream
 
 # ----------------------------------------------------------------------
@@ -218,13 +269,6 @@ def resize_by_percentage(img: np.ndarray, percentage: int) -> np.ndarray | None:
 
     return resized
 
-def get_unavailable_image(resize_percentage: int = 50) -> io.BytesIO | None:
-    return get_image(
-        container=TEMPLATES_CONTAINER,
-        blob_name=TEMPLATE_UNAVAILABLE_IMAGE,
-        resize_percentage=resize_percentage
-    )
-        
 def get_image(container: str, blob_name: str, resize_percentage: int = 50) -> io.BytesIO | None:
     """
     Downloads an image, validates that it is an image,
