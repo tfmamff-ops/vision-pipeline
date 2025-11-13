@@ -141,7 +141,7 @@ def generate_verification_report_bytes(template: bytes, replacements: dict, imag
         logging.exception("[generate_report] Error loading DOCX template")
         return None
 
-    def add_colored_text(paragraph, text: str):
+    def add_colored_text(paragraph, text: str) -> None:
         """Writes text with color for ✔ (green) and ✘ (red)."""
         for ch in text:
             run = paragraph.add_run(ch)
@@ -150,61 +150,69 @@ def generate_verification_report_bytes(template: bytes, replacements: dict, imag
             elif ch == "✘":
                 run.font.color.rgb = RGBColor(200, 0, 0)
 
-    def replace_in_element(element):
-        """Replaces text and image placeholders in a paragraph or table cell."""
+    def clear_paragraph_runs(paragraph: Paragraph) -> None:
+        for run in reversed(paragraph.runs):
+            paragraph._element.remove(run._element)
+
+    def try_insert_image(paragraph: Paragraph, full_text: str) -> bool:
+        """Tries to insert an image if any image placeholder is found in the paragraph."""
+        for img_placeholder, img_info in image_paths.items():
+            token = f"{{{{{img_placeholder}}}}}"
+            if token not in full_text:
+                continue
+
+            clear_paragraph_runs(paragraph)
+
+            container = img_info.get("container")
+            blob_name = img_info.get("blobName")
+            resize_pct = img_info.get("resizePercentage", 40)
+
+            final_img_source = get_image(container, blob_name, resize_percentage=resize_pct)
+
+            if final_img_source:
+                run = paragraph.add_run()
+                run.add_picture(final_img_source)
+                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                return True
+
+            logging.warning(
+                "[generate_report] No valid image for placeholder '%s' (container=%r, blobName=%r)",
+                img_placeholder, container, blob_name
+            )
+            return False
+
+        return False
+
+    def apply_text_replacements(paragraph: Paragraph) -> None:
+        full_text = "".join(run.text for run in paragraph.runs)
+        new_text = full_text
+
+        for placeholder, value in replacements.items():
+            new_text = new_text.replace(placeholder, str(value))
+
+        if new_text != full_text:
+            clear_paragraph_runs(paragraph)
+            add_colored_text(paragraph, new_text)
+
+    def iter_paragraphs(element) -> list[Paragraph]:
         if isinstance(element, Paragraph):
-            paragraphs = [element]
-        elif isinstance(element, Table):
-            paragraphs = []
+            return [element]
+        if isinstance(element, Table):
+            result: list[Paragraph] = []
             for row in element.rows:
                 for cell in row.cells:
-                    paragraphs.extend(cell.paragraphs)
-        else:
-            return
+                    result.extend(cell.paragraphs)
+            return result
+        return []
 
-        for paragraph in paragraphs:
-            full_text = "".join([run.text for run in paragraph.runs])
-            image_inserted = False
+    def replace_in_element(element) -> None:
+        """Replaces text and image placeholders in a paragraph or table cell."""
+        for paragraph in iter_paragraphs(element):
+            full_text = "".join(run.text for run in paragraph.runs)
 
-            # IMAGE REPLACEMENT
-            for img_placeholder, img_info in image_paths.items():
-                token = f"{{{{{img_placeholder}}}}}"
-                if token in full_text:
-                    # Remove previous content
-                    for run in reversed(paragraph.runs):
-                        paragraph._element.remove(run._element)
-
-                    container = img_info.get("container")
-                    blob_name = img_info.get("blobName")
-                    resize_pct = img_info.get("resizePercentage", 40)
-
-                    final_img_source = get_image(container, blob_name, resize_percentage=resize_pct)
-
-                    if final_img_source:
-                        run = paragraph.add_run()
-                        run.add_picture(final_img_source)
-                        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        image_inserted = True
-                    else:
-                        logging.warning(
-                            "[generate_report] No valid image for placeholder '%s' (container=%r, blobName=%r)",
-                            img_placeholder, container, blob_name
-                        )
-
-                    break
-
-            # TEXT REPLACEMENT
+            image_inserted = try_insert_image(paragraph, full_text)
             if not image_inserted:
-                full_text = "".join([run.text for run in paragraph.runs])
-                new_text = full_text
-
-                for placeholder, value in replacements.items():
-                    new_text = new_text.replace(placeholder, str(value))
-
-                if new_text != full_text:
-                    for run in reversed(paragraph.runs):
-                        paragraph._element.remove(run._element)
-                    add_colored_text(paragraph, new_text)
+                apply_text_replacements(paragraph)
 
     # Apply replacements throughout the document
     for paragraph in document.paragraphs:
