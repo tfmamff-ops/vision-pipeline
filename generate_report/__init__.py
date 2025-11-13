@@ -1,37 +1,36 @@
+import io
 import json
+import logging
 import uuid
-import logging
-import azure.functions as func
-import io
-from shared_code.storage_util import download_bytes, upload_bytes
-import requests
-import logging
-import numpy as np
-import cv2
 
-from docx import Document
-from docx.shared import Cm, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.text.paragraph import Paragraph
-from docx.table import Table
-import io
+import azure.functions as func
+import cv2
+import numpy as np
 import requests
+from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import RGBColor
+from docx.table import Table
+from docx.text.paragraph import Paragraph
+
+from shared_code.storage_util import download_bytes, upload_bytes
 
 TEMPLATES_CONTAINER = "report-templates"
 TEMPLATE_ACCEPT = "accept.docx"
 TEMPLATE_REJECT = "reject.docx"
-TEMPLATE_UNAVAILABLE_IMAGE = "unavailable_image.png"
 CLOUDMERSIVE_URL = "https://api.cloudmersive.com/convert/docx/to/pdf"
 CLOUDMERSIVE_API_KEY = "d2e4f77e-0140-4072-9390-1ffcfbe2b1e9"
 MIME_JSON = "application/json"
+
 
 # ----------------------------------------------------------------------
 # REPORT CONTENT PREPARATION
 # ----------------------------------------------------------------------
 
-def getReportReplacementsAndImagePaths(instanceId, userComment, accepted):
+
+def get_report_replacements_and_image_paths(instance_id, user_comment, accepted):
     """
-    Prepares the replacements dictionary and image paths for the report generation.
+    Build the replacements dictionary and image path metadata used to fill the DOCX template.
     """
     replacements = {
         "{{instance_id}}": "INS-20251010-001",
@@ -81,7 +80,7 @@ def getReportReplacementsAndImagePaths(instanceId, userComment, accepted):
         "processed_image": {
             "container": "output",
             "blobName": "final/ocr/processed/03de1e46-ede1-4354-a890-69b550c08c33.png",
-            "resizePercentage": 65,
+            "resizePercentage": 50,
         },
         "ocr_overlay_image": {
             "container": "output",
@@ -96,44 +95,164 @@ def getReportReplacementsAndImagePaths(instanceId, userComment, accepted):
         "barcode_roi_image": {
             "container": "output",
             "blobName": "final/barcode/roi/02d7cd2d-5913-4778-a7ea-b0093bb75f45.png",
-            "resizePercentage": 70,
+            "resizePercentage": 50,
         },
     }
 
     return replacements, image_paths
 
+
 # ----------------------------------------------------------------------
-# CONVERSION FUNCTION
+# DOCX → PDF CONVERSION (CLOUDMERSIVE)
 # ----------------------------------------------------------------------
+
 
 def convert_docx_to_pdf_cloudmersive(docx_bytes: io.BytesIO, api_key: str) -> bytes | None:
-    headers = {"Apikey": api_key}
+    """
+    Send a DOCX in memory to Cloudmersive and return the resulting PDF bytes,
+    or None if the conversion fails.
+    """
+    payload = docx_bytes.getvalue()
+    logging.info("[generate_report] Cloudmersive upload DOCX size: %d bytes", len(payload))
 
+    headers = {"Apikey": api_key}
     files = {
         "inputFile": (
             "input.docx",
-            docx_bytes.getvalue(),
+            payload,
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         )
     }
 
     try:
-        r = requests.post(CLOUDMERSIVE_URL, headers=headers, files=files, timeout=60)
-        if r.status_code == 200:
-            return r.content  # PDF bytes
-        else:
-            logging.error(f"Error {r.status_code}. Response: {r.text[:300]}")
-            return None
-    except requests.RequestException as e:
-        logging.error(f"Network error: {e}")
+        response = requests.post(CLOUDMERSIVE_URL, headers=headers, files=files, timeout=60)
+    except requests.RequestException as exc:
+        logging.error("[generate_report] Cloudmersive network error: %s", exc)
         return None
 
+    if response.status_code == 200:
+        return response.content
+
+    logging.error(
+        "[generate_report] Cloudmersive error %s. Response: %s",
+        response.status_code,
+        response.text[:300],
+    )
+    return None
+
+
 # ----------------------------------------------------------------------
-# DOCX REPORT GENERATION CODE
+# DOCX REPORT GENERATION
 # ----------------------------------------------------------------------
 
-def generate_verification_report_bytes(template: bytes, replacements: dict, image_paths: dict) -> io.BytesIO | None:
-    """Generates a DOCX report from a template and returns it as an io.BytesIO object."""
+
+def add_colored_text(paragraph: Paragraph, text: str) -> None:
+    """
+    Write text into a paragraph and color ✔ in green and ✘ in red.
+    Other characters keep the default color.
+    """
+    for ch in text:
+        run = paragraph.add_run(ch)
+        if ch == "✔":
+            run.font.color.rgb = RGBColor(0, 150, 0)
+        elif ch == "✘":
+            run.font.color.rgb = RGBColor(200, 0, 0)
+
+
+def clear_paragraph_runs(paragraph: Paragraph) -> None:
+    """Remove all runs from a paragraph."""
+    for run in reversed(paragraph.runs):
+        paragraph._element.remove(run._element)
+
+
+def try_insert_image(paragraph: Paragraph, full_text: str, image_paths: dict) -> bool:
+    """
+    Look for an image placeholder in the paragraph and, if found,
+    download and insert the corresponding image.
+    """
+    for img_placeholder, img_info in image_paths.items():
+        token = f"{{{{{img_placeholder}}}}}"
+        if token not in full_text:
+            continue
+
+        clear_paragraph_runs(paragraph)
+
+        container = img_info.get("container")
+        blob_name = img_info.get("blobName")
+        resize_pct = img_info.get("resizePercentage", 40)
+
+        final_img_source = get_image(container, blob_name, resize_percentage=resize_pct)
+
+        if final_img_source:
+            run = paragraph.add_run()
+            run.add_picture(final_img_source)
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            return True
+
+        logging.warning(
+            "[generate_report] No valid image for placeholder '%s' (container=%r, blobName=%r)",
+            img_placeholder,
+            container,
+            blob_name,
+        )
+        return False
+
+    return False
+
+
+def apply_text_replacements(paragraph: Paragraph, replacements: dict) -> None:
+    """
+    Replace all placeholder tokens in a paragraph with their corresponding values.
+    """
+    full_text = "".join(run.text for run in paragraph.runs)
+    new_text = full_text
+
+    for placeholder, value in replacements.items():
+        new_text = new_text.replace(placeholder, str(value))
+
+    if new_text != full_text:
+        clear_paragraph_runs(paragraph)
+        add_colored_text(paragraph, new_text)
+
+
+def iter_paragraphs(element) -> list[Paragraph]:
+    """
+    Return a flat list of Paragraph objects from either a single paragraph or a table.
+    """
+    if isinstance(element, Paragraph):
+        return [element]
+
+    if isinstance(element, Table):
+        result: list[Paragraph] = []
+        for row in element.rows:
+            for cell in row.cells:
+                result.extend(cell.paragraphs)
+        return result
+
+    return []
+
+
+def replace_in_element(element, replacements: dict, image_paths: dict) -> None:
+    """
+    Apply image replacement and text replacement on all paragraphs inside an element.
+    """
+    for paragraph in iter_paragraphs(element):
+        full_text = "".join(run.text for run in paragraph.runs)
+
+        image_inserted = try_insert_image(paragraph, full_text, image_paths)
+        if not image_inserted:
+            apply_text_replacements(paragraph, replacements)
+
+
+def generate_verification_report_bytes(
+    template: bytes,
+    replacements: dict,
+    image_paths: dict,
+) -> io.BytesIO | None:
+    """
+    Load a DOCX template from bytes, apply text and image placeholders,
+    and return a new DOCX as BytesIO. Returns None if the template cannot be loaded.
+    """
     try:
         buf = io.BytesIO(template)
         document = Document(buf)
@@ -141,102 +260,30 @@ def generate_verification_report_bytes(template: bytes, replacements: dict, imag
         logging.exception("[generate_report] Error loading DOCX template")
         return None
 
-    def add_colored_text(paragraph, text: str) -> None:
-        """Writes text with color for ✔ (green) and ✘ (red)."""
-        for ch in text:
-            run = paragraph.add_run(ch)
-            if ch == "✔":
-                run.font.color.rgb = RGBColor(0, 150, 0)
-            elif ch == "✘":
-                run.font.color.rgb = RGBColor(200, 0, 0)
-
-    def clear_paragraph_runs(paragraph: Paragraph) -> None:
-        for run in reversed(paragraph.runs):
-            paragraph._element.remove(run._element)
-
-    def try_insert_image(paragraph: Paragraph, full_text: str) -> bool:
-        """Tries to insert an image if any image placeholder is found in the paragraph."""
-        for img_placeholder, img_info in image_paths.items():
-            token = f"{{{{{img_placeholder}}}}}"
-            if token not in full_text:
-                continue
-
-            clear_paragraph_runs(paragraph)
-
-            container = img_info.get("container")
-            blob_name = img_info.get("blobName")
-            resize_pct = img_info.get("resizePercentage", 40)
-
-            final_img_source = get_image(container, blob_name, resize_percentage=resize_pct)
-
-            if final_img_source:
-                run = paragraph.add_run()
-                run.add_picture(final_img_source)
-                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                return True
-
-            logging.warning(
-                "[generate_report] No valid image for placeholder '%s' (container=%r, blobName=%r)",
-                img_placeholder, container, blob_name
-            )
-            return False
-
-        return False
-
-    def apply_text_replacements(paragraph: Paragraph) -> None:
-        full_text = "".join(run.text for run in paragraph.runs)
-        new_text = full_text
-
-        for placeholder, value in replacements.items():
-            new_text = new_text.replace(placeholder, str(value))
-
-        if new_text != full_text:
-            clear_paragraph_runs(paragraph)
-            add_colored_text(paragraph, new_text)
-
-    def iter_paragraphs(element) -> list[Paragraph]:
-        if isinstance(element, Paragraph):
-            return [element]
-        if isinstance(element, Table):
-            result: list[Paragraph] = []
-            for row in element.rows:
-                for cell in row.cells:
-                    result.extend(cell.paragraphs)
-            return result
-        return []
-
-    def replace_in_element(element) -> None:
-        """Replaces text and image placeholders in a paragraph or table cell."""
-        for paragraph in iter_paragraphs(element):
-            full_text = "".join(run.text for run in paragraph.runs)
-
-            image_inserted = try_insert_image(paragraph, full_text)
-            if not image_inserted:
-                apply_text_replacements(paragraph)
-
-    # Apply replacements throughout the document
+    # Process paragraphs
     for paragraph in document.paragraphs:
-        replace_in_element(paragraph)
+        replace_in_element(paragraph, replacements, image_paths)
 
+    # Process tables
     for table in document.tables:
-        replace_in_element(table)
+        replace_in_element(table, replacements, image_paths)
 
-    # Output buffer
     out_stream = io.BytesIO()
     document.save(out_stream)
     out_stream.seek(0)
     return out_stream
 
+
 # ----------------------------------------------------------------------
 # IMAGE SUPPORT CODE
 # ----------------------------------------------------------------------
 
+
 def resize_by_percentage(img: np.ndarray, percentage: int) -> np.ndarray | None:
     """
-    Scales an OpenCV image (ndarray) by a percentage.
-    Returns a resized ndarray or None if it fails.
+    Scale an OpenCV image (ndarray) by a percentage.
+    Returns a resized ndarray or None if validation or resize fails.
     """
-
     if img is None:
         logging.error("[resize_by_percentage] input image is None")
         return None
@@ -255,30 +302,28 @@ def resize_by_percentage(img: np.ndarray, percentage: int) -> np.ndarray | None:
 
     try:
         resized = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
-    except Exception as e:
-        logging.error("[resize_by_percentage] cv2.resize failed: %s", e)
+    except Exception as exc:
+        logging.error("[resize_by_percentage] cv2.resize failed: %s", exc)
         return None
 
     return resized
 
+
 def get_image(container: str, blob_name: str, resize_percentage: int = 50) -> io.BytesIO | None:
     """
-    Downloads an image, validates that it is an image,
-    uses resize_by_percentage(), and returns a PNG BytesIO.
+    Download an image from Blob Storage, validate and resize it,
+    and return the final PNG as a BytesIO stream.
     """
-
-    # Download image from Blob
     try:
         img_bytes = download_bytes(container, blob_name)
-    except Exception as e:
-        logging.error("[generate_report] error downloading image: %s", e)
+    except Exception as exc:
+        logging.error("[generate_report] error downloading image: %s", exc)
         return None
 
     if not img_bytes:
         logging.error("[generate_report] image blob is empty")
         return None
 
-    # Decode to ndarray
     arr = np.frombuffer(img_bytes, dtype=np.uint8)
     img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
 
@@ -292,13 +337,11 @@ def get_image(container: str, blob_name: str, resize_percentage: int = 50) -> io
         img.dtype,
     )
 
-    # Resize using the generic function
     resized = resize_by_percentage(img, resize_percentage)
     if resized is None:
         logging.error("[generate_report] resize_by_percentage returned None")
         return None
 
-    # Convert to PNG in BytesIO
     success, encoded_png = cv2.imencode(".png", resized)
     if not success:
         logging.error("[generate_report] failed to encode resized image to PNG")
@@ -308,109 +351,136 @@ def get_image(container: str, blob_name: str, resize_percentage: int = 50) -> io
     buf.seek(0)
     return buf
 
+
+# ----------------------------------------------------------------------
+# HTTP ENTRYPOINT (AZURE FUNCTION)
+# ----------------------------------------------------------------------
+
+
 def main(req: func.HttpRequest) -> func.HttpResponse:
-	"""
-	HTTP-triggered function that generates a PDF report from templates stored in Blob Storage.
+    """
+    HTTP-triggered entrypoint that generates a PDF report from DOCX templates
+    stored in Blob Storage and returns the Blob reference of the final PDF.
+    """
+    try:
+        payload = req.get_json()
 
-	It fetches "accept.docx" and "reject.docx" from the container "report-templates". 
-	Expected JSON body fields include:
-	{
-		"instanceId": "<durable instance id>",
-		"userComment": "<optional free-text comment>",
-		"accepted": "<true|false>"
-	}
+        # Log the full received JSON body for auditing/troubleshooting purposes
+        logging.info("[generate_report] JSON received (raw): %s", req.get_body().decode("utf-8"))
+        logging.info(
+            "[generate_report] Parsed JSON (payload): %s",
+            json.dumps(payload, indent=2, ensure_ascii=False),
+        )
 
-	The response returns the blob reference of the generated PDF:
-	{
-		"reportBlob": {
-			"container": "output",
-			"blobName": "final/report/<uuid>.pdf"
-		}
-	}
-	"""
-	
-	try:
-		payload = req.get_json()
-        
-        # Log the full received JSON
-		logging.info("[generate_report] JSON received (raw): %s", req.get_body().decode('utf-8'))
-		logging.info("[generate_report] Parsed JSON (payload): %s", json.dumps(payload, indent=2, ensure_ascii=False))
-		instanceId = payload.get("instanceId")
-		userComment = payload.get("userComment")
-		accepted = payload.get("accepted")
-	except Exception as e:
-		logging.exception("[generate_report] Error processing JSON - returning 400")
-		return func.HttpResponse(
-			json.dumps({
-				"ok": False,
-				"error": {"code": "invalid_json", "message": "Invalid JSON in request body"}
-			}),
-			status_code=400,
-			mimetype=MIME_JSON
-		)
+        instance_id = payload.get("instanceId")
+        user_comment = payload.get("userComment")
+        accepted = payload.get("accepted")
+    except Exception:
+        logging.exception("[generate_report] Error processing JSON - returning 400")
+        return func.HttpResponse(
+            json.dumps(
+                {
+                    "ok": False,
+                    "error": {"code": "invalid_json", "message": "Invalid JSON in request body"},
+                }
+            ),
+            status_code=400,
+            mimetype=MIME_JSON,
+        )
 
+    try:
+        template_bytes = download_bytes(
+            TEMPLATES_CONTAINER,
+            TEMPLATE_ACCEPT if accepted else TEMPLATE_REJECT,
+        )
+    except Exception as exc:
+        logging.exception("[generate_report] Failed to download template: %s", exc)
+        return func.HttpResponse(
+            json.dumps(
+                {
+                    "ok": False,
+                    "error": {
+                        "code": "missing_template",
+                        "message": "Template could not be downloaded",
+                    },
+                }
+            ),
+            status_code=404,
+            mimetype=MIME_JSON,
+        )
 
-	try:
-		template_bytes = download_bytes(TEMPLATES_CONTAINER, TEMPLATE_ACCEPT if accepted else TEMPLATE_REJECT)
-	except Exception as e:
-		logging.exception("[generate_report] Failed to download template: %s", e)
-		return func.HttpResponse(
-			json.dumps({
-				"ok": False,
-				"error": {"code": "missing_template", "message": "Template could not be downloaded"}
-			}),
-			status_code=404,
-			mimetype=MIME_JSON
-		)
+    # Build the data used to fill the DOCX template
+    replacements, image_paths = get_report_replacements_and_image_paths(
+        instance_id,
+        user_comment,
+        accepted,
+    )
+    docx_stream = generate_verification_report_bytes(template_bytes, replacements, image_paths)
 
-    # Prepare replacements and image paths
-	replacements, image_paths = getReportReplacementsAndImagePaths(instanceId, userComment, accepted)
-	docx_stream = generate_verification_report_bytes(template_bytes, replacements, image_paths)
-	
-	if docx_stream is None:
-		logging.error("[generate_report] DOCX generation failed")
-		return func.HttpResponse(
-			json.dumps({
-				"ok": False,
-				"error": {"code": "docx_generation_failed", "message": "Could not generate DOCX report"}
-			}),
-			status_code=500,
-			mimetype=MIME_JSON
-		)
+    if docx_stream is None:
+        logging.error("[generate_report] DOCX generation failed")
+        return func.HttpResponse(
+            json.dumps(
+                {
+                    "ok": False,
+                    "error": {
+                        "code": "docx_generation_failed",
+                        "message": "Could not generate DOCX report",
+                    },
+                }
+            ),
+            status_code=500,
+            mimetype=MIME_JSON,
+        )
 
-	pdf_bytes = convert_docx_to_pdf_cloudmersive(docx_stream, CLOUDMERSIVE_API_KEY)
+    pdf_bytes = convert_docx_to_pdf_cloudmersive(docx_stream, CLOUDMERSIVE_API_KEY)
 
-	if not pdf_bytes:
-		logging.error("[generate_report] DOCX to PDF conversion failed")
-		return func.HttpResponse(
-			json.dumps({
-				"ok": False,
-				"error": {"code": "conversion_failed", "message": "Could not convert DOCX to PDF"}
-			}),
-			status_code=502,
-			mimetype=MIME_JSON
-		)
+    if not pdf_bytes:
+        logging.error("[generate_report] DOCX to PDF conversion failed")
+        return func.HttpResponse(
+            json.dumps(
+                {
+                    "ok": False,
+                    "error": {
+                        "code": "conversion_failed",
+                        "message": "Could not convert DOCX to PDF",
+                    },
+                }
+            ),
+            status_code=502,
+            mimetype=MIME_JSON,
+        )
 
-	# Prepare output name and upload
-	out_blob_name = f"final/report/{uuid.uuid4()}.pdf"
-	try:
-		upload_bytes("output", out_blob_name, pdf_bytes, content_type="application/pdf")
-		logging.info("[generate_report] Uploaded report as %s/%s", "output", out_blob_name)
-	except Exception as e:
-		logging.exception("[generate_report] Failed to upload report: %s", e)
-		return func.HttpResponse(
-			json.dumps({
-				"ok": False,
-				"error": {"code": "upload_failed", "message": "Could not upload PDF to Blob Storage"}
-			}),
-			status_code=500,
-			mimetype=MIME_JSON
-		)
-	
-	return func.HttpResponse(
-		json.dumps({
-			"reportBlob": {"container": "output", "blobName": out_blob_name}
-		}),
-		status_code=200,
-		mimetype=MIME_JSON
-	)
+    out_blob_name = f"final/report/{uuid.uuid4()}.pdf"
+
+    try:
+        upload_bytes("output", out_blob_name, pdf_bytes, content_type="application/pdf")
+        logging.info("[generate_report] Uploaded report as %s/%s", "output", out_blob_name)
+    except Exception as exc:
+        logging.exception("[generate_report] Failed to upload report: %s", exc)
+        return func.HttpResponse(
+            json.dumps(
+                {
+                    "ok": False,
+                    "error": {
+                        "code": "upload_failed",
+                        "message": "Could not upload PDF to Blob Storage",
+                    },
+                }
+            ),
+            status_code=500,
+            mimetype=MIME_JSON,
+        )
+
+    return func.HttpResponse(
+        json.dumps(
+            {
+                "reportBlob": {
+                    "container": "output",
+                    "blobName": out_blob_name,
+                }
+            }
+        ),
+        status_code=200,
+        mimetype=MIME_JSON,
+    )
