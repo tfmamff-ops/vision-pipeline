@@ -9,7 +9,7 @@ import numpy as np
 import requests
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.shared import RGBColor
+from docx.shared import RGBColor, Cm
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
@@ -76,26 +76,36 @@ def get_report_replacements_and_image_paths(instance_id, user_comment, accepted)
             "container": "input",
             "blobName": "uploads/0a0643fc-fd95-480f-94cc-459f21d03aeb.jpg",
             "resizePercentage": 40,
+            "jpegQuality": 70,
+            "widthCm": 10.0,
         },
         "processed_image": {
             "container": "output",
             "blobName": "final/ocr/processed/03de1e46-ede1-4354-a890-69b550c08c33.png",
             "resizePercentage": 40,
+            "jpegQuality": 70,
+            "widthCm": 10.0,
         },
         "ocr_overlay_image": {
             "container": "output",
             "blobName": "final/ocr/overlay/04f75521-4400-4d79-8e30-ded2952200a9.png",
             "resizePercentage": 40,
+            "jpegQuality": 70,
+            "widthCm": 10.0,
         },
         "barcode_overlay_image": {
             "container": "output",
             "blobName": "final/barcode/overlay/02d7cd2d-5913-4778-a7ea-b0093bb75f45.png",
             "resizePercentage": 40,
+            "jpegQuality": 70,
+            "widthCm": 7.0,
         },
         "barcode_roi_image": {
             "container": "output",
             "blobName": "final/barcode/roi/02d7cd2d-5913-4778-a7ea-b0093bb75f45.png",
             "resizePercentage": 40,
+            "jpegQuality": 70,
+            "widthCm": 7.0,
         },
     }
 
@@ -168,7 +178,8 @@ def clear_paragraph_runs(paragraph: Paragraph) -> None:
 def try_insert_image(paragraph: Paragraph, full_text: str, image_paths: dict) -> bool:
     """
     Look for an image placeholder in the paragraph and, if found,
-    download and insert the corresponding image.
+    download and insert the corresponding image with the requested
+    resizePercentage, jpegQuality and width in cm.
     """
     for img_placeholder, img_info in image_paths.items():
         token = f"{{{{{img_placeholder}}}}}"
@@ -179,13 +190,20 @@ def try_insert_image(paragraph: Paragraph, full_text: str, image_paths: dict) ->
 
         container = img_info.get("container")
         blob_name = img_info.get("blobName")
-        resize_pct = img_info.get("resizePercentage", 40)
+        resize_pct = img_info.get("resizePercentage")
+        jpeg_quality = img_info.get("jpegQuality")
+        width_cm = img_info.get("widthCm")
 
-        final_img_source = get_image(container, blob_name, resize_percentage=resize_pct)
+        final_img_source = get_image(
+            container,
+            blob_name,
+            resize_percentage=resize_pct,
+            jpeg_quality=jpeg_quality,
+        )
 
         if final_img_source:
             run = paragraph.add_run()
-            run.add_picture(final_img_source)
+            run.add_picture(final_img_source, width=Cm(width_cm))
             paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
             return True
 
@@ -309,10 +327,18 @@ def resize_by_percentage(img: np.ndarray, percentage: int) -> np.ndarray | None:
     return resized
 
 
-def get_image(container: str, blob_name: str, resize_percentage: int = 50) -> io.BytesIO | None:
+def get_image(
+    container: str,
+    blob_name: str,
+    resize_percentage: int = 50,
+    jpeg_quality: int = 75,
+) -> io.BytesIO | None:
     """
     Download an image from Blob Storage, validate and resize it,
-    and return the final PNG as a BytesIO stream.
+    and return the final JPEG as a BytesIO stream.
+
+    - resize_percentage: scale factor in percent (e.g., 40 = 40% of original size)
+    - jpeg_quality: JPEG quality (1–100). Lower = smaller file, more compression.
     """
     try:
         img_bytes = download_bytes(container, blob_name)
@@ -337,17 +363,29 @@ def get_image(container: str, blob_name: str, resize_percentage: int = 50) -> io
         img.dtype,
     )
 
+    # Fallbacks in case caller passes None
+    if resize_percentage is None:
+        resize_percentage = 50
+    if jpeg_quality is None:
+        jpeg_quality = 75
+
     resized = resize_by_percentage(img, resize_percentage)
     if resized is None:
         logging.error("[generate_report] resize_by_percentage returned None")
         return None
 
-    success, encoded_png = cv2.imencode(".png", resized)
+    # Encode as JPEG with configurable quality to reduce file size
+    jpeg_quality = max(1, min(100, int(jpeg_quality)))  # clamp 1–100
+    success, encoded_jpeg = cv2.imencode(
+        ".jpg",
+        resized,
+        [int(cv2.IMWRITE_JPEG_QUALITY), jpeg_quality],
+    )
     if not success:
-        logging.error("[generate_report] failed to encode resized image to PNG")
+        logging.error("[generate_report] failed to encode resized image to JPEG")
         return None
 
-    buf = io.BytesIO(encoded_png.tobytes())
+    buf = io.BytesIO(encoded_jpeg.tobytes())
     buf.seek(0)
     return buf
 
