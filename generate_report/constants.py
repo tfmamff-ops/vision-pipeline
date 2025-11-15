@@ -1,6 +1,0 @@
-TEMPLATES_CONTAINER = "report-templates"
-TEMPLATE_ACCEPT = "accept.docx"
-TEMPLATE_REJECT = "reject.docx"
-CLOUDMERSIVE_URL = "https://api.cloudmersive.com/convert/docx/to/pdf"
-CLOUDMERSIVE_API_KEY = "d2e4f77e-0140-4072-9390-1ffcfbe2b1e9"
-MIME_JSON = "application/json"

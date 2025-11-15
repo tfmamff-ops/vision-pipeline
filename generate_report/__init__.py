@@ -1,18 +1,12 @@
 import json
 import logging
 import uuid
+import os
 
 import azure.functions as func
 
 from shared_code.storage_util import download_bytes, upload_bytes
 
-from .constants import (
-    CLOUDMERSIVE_API_KEY,
-    MIME_JSON,
-    TEMPLATE_ACCEPT,
-    TEMPLATE_REJECT,
-    TEMPLATES_CONTAINER,
-)
 from .conversion import convert_docx_to_pdf_cloudmersive
 from .docx_report import generate_verification_report_bytes
 from .replacements import get_report_replacements_and_image_paths
@@ -23,6 +17,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     HTTP-triggered entrypoint that generates a PDF report from DOCX templates
     stored in Blob Storage and returns the Blob reference of the final PDF.
     """
+    MIME_JSON = "application/json"
+
     try:
         payload = req.get_json()
 
@@ -51,8 +47,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     try:
         template_bytes = download_bytes(
-            TEMPLATES_CONTAINER,
-            TEMPLATE_ACCEPT if accepted else TEMPLATE_REJECT,
+            str(os.getenv("TEMPLATES_CONTAINER")),
+            str(os.getenv("TEMPLATE_ACCEPT")) if accepted else str(os.getenv("TEMPLATE_REJECT")),
         )
     except Exception as exc:
         logging.exception("[generate_report] Failed to download template: %s", exc)
@@ -90,7 +86,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             mimetype=MIME_JSON,
         )
 
-    pdf_bytes = convert_docx_to_pdf_cloudmersive(docx_stream, CLOUDMERSIVE_API_KEY)
+    pdf_bytes = convert_docx_to_pdf_cloudmersive(docx_stream, str(os.getenv("CLOUDMERSIVE_API_KEY")))
 
     if not pdf_bytes:
         logging.error("[generate_report] DOCX to PDF conversion failed")
@@ -108,11 +104,16 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             mimetype=MIME_JSON,
         )
 
-    out_blob_name = f"final/report/{uuid.uuid4()}.pdf"
+    out_blob_name = f"final/report/{uuid.uuid4()}"
+    out_blob_name_pdf = out_blob_name + ".pdf"
+    out_blob_name_docx = out_blob_name + ".docx"
 
     try:
-        upload_bytes("output", out_blob_name, pdf_bytes, content_type="application/pdf")
-        logging.info("[generate_report] Uploaded report as %s/%s", "output", out_blob_name)
+        upload_bytes("output", out_blob_name_pdf, pdf_bytes, content_type="application/pdf")
+        logging.info("[generate_report] Uploaded report as %s/%s", "output", out_blob_name_pdf)
+        
+        upload_bytes("output", out_blob_name_docx, docx_stream.getvalue(), content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        logging.info("[generate_report] Uploaded report as %s/%s", "output", out_blob_name_docx)
     except Exception as exc:
         logging.exception("[generate_report] Failed to upload report: %s", exc)
         return func.HttpResponse(
@@ -121,7 +122,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                     "ok": False,
                     "error": {
                         "code": "upload_failed",
-                        "message": "Could not upload PDF to Blob Storage",
+                        "message": "Could not upload report to Blob Storage",
                     },
                 }
             ),
@@ -134,7 +135,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             {
                 "reportBlob": {
                     "container": "output",
-                    "blobName": out_blob_name,
+                    "blobNamePDF": out_blob_name_pdf,
+                    "blobNameDOCX": out_blob_name_docx,
                 }
             }
         ),

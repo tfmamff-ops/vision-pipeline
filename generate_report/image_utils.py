@@ -59,11 +59,6 @@ def get_image(container: str, blob_name: str, resize_percentage: int = 50, jpeg_
         img.dtype,
     )
 
-    if resize_percentage is None:
-        resize_percentage = 50
-    if jpeg_quality is None:
-        jpeg_quality = 75
-
     resized = resize_by_percentage(img, resize_percentage)
     if resized is None:
         logging.error("[generate_report] resize_by_percentage returned None")

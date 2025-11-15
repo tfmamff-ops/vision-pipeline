@@ -1,10 +1,7 @@
 import io
 import logging
-
+import os
 import requests
-
-from .constants import CLOUDMERSIVE_URL
-
 
 def convert_docx_to_pdf_cloudmersive(docx_bytes: io.BytesIO, api_key: str) -> bytes | None:
     """Send a DOCX to Cloudmersive and return the PDF bytes."""
@@ -21,7 +18,7 @@ def convert_docx_to_pdf_cloudmersive(docx_bytes: io.BytesIO, api_key: str) -> by
     }
 
     try:
-        response = requests.post(CLOUDMERSIVE_URL, headers=headers, files=files, timeout=60)
+        response = requests.post(str(os.getenv("CLOUDMERSIVE_URL")), headers=headers, files=files, timeout=60)
     except requests.RequestException as exc:
         logging.error("[generate_report] Cloudmersive network error: %s", exc)
         return None
