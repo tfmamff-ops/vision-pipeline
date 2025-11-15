@@ -6,7 +6,7 @@ from psycopg.rows import dict_row
 
 
 POSTGRES_URL = os.environ["POSTGRES_URL"]
-MISSING_VALUE = "--"
+MISSING_VALUE = "⸺"
 
 def _bool_to_mark(value) -> str:
     """Return '✔' for True, '✘' for False, '' for None."""
