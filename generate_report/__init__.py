@@ -11,6 +11,7 @@ from .conversion import convert_docx_to_pdf_cloudmersive
 from .docx_report import generate_verification_report_bytes
 from .replacements import get_report_replacements_and_image_paths
 
+REPORT_CONTAINER = "output"
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     """
@@ -65,9 +66,14 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             status_code=404,
             mimetype=MIME_JSON,
         )
+    
+    # Generate unique output blob names
+    out_blob_name = f"final/report/{uuid.uuid4()}"
+    out_blob_name_pdf = out_blob_name + ".pdf"
+    out_blob_name_docx = out_blob_name + ".docx"
 
     # Build the data used to fill the DOCX template
-    replacements, image_paths = get_report_replacements_and_image_paths(instance_id, user_comment)
+    replacements, image_paths = get_report_replacements_and_image_paths(instance_id, user_comment, REPORT_CONTAINER, out_blob_name_pdf)
     docx_stream = generate_verification_report_bytes(template_bytes, replacements, image_paths)
 
     if docx_stream is None:
@@ -104,10 +110,6 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             mimetype=MIME_JSON,
         )
 
-    out_blob_name = f"final/report/{uuid.uuid4()}"
-    out_blob_name_pdf = out_blob_name + ".pdf"
-    out_blob_name_docx = out_blob_name + ".docx"
-
     try:
         upload_bytes("output", out_blob_name_pdf, pdf_bytes, content_type="application/pdf")
         logging.info("[generate_report] Uploaded report as %s/%s", "output", out_blob_name_pdf)
@@ -134,7 +136,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         json.dumps(
             {
                 "reportBlob": {
-                    "container": "output",
+                    "container": REPORT_CONTAINER,
                     "blobNamePDF": out_blob_name_pdf,
                     "blobNameDOCX": out_blob_name_docx,
                 }

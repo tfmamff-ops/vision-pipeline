@@ -7,7 +7,7 @@ from docx.shared import RGBColor, Cm
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
-from .image_utils import get_image
+from .image_utils import get_image, get_unavailable_image
 
 
 def add_colored_text(paragraph: Paragraph, text: str) -> None:
@@ -48,17 +48,25 @@ def try_insert_image(paragraph: Paragraph, full_text: str, image_paths: dict) ->
             jpeg_quality=jpeg_quality,
         )
 
+        if not final_img_source:
+            logging.warning(
+                "[generate_report] Missing image for placeholder '%s' (container=%r, blobName=%r); using fallback",
+                img_placeholder,
+                container,
+                blob_name,
+            )
+            final_img_source = get_unavailable_image(resize_pct, jpeg_quality)
+
         if final_img_source:
+            target_width = width_cm
             run = paragraph.add_run()
-            run.add_picture(final_img_source, width=Cm(width_cm))
+            run.add_picture(final_img_source, width=Cm(target_width))
             paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
             return True
 
-        logging.warning(
-            "[generate_report] No valid image for placeholder '%s' (container=%r, blobName=%r)",
+        logging.error(
+            "[generate_report] Unable to insert fallback image for placeholder '%s'",
             img_placeholder,
-            container,
-            blob_name,
         )
         return False
 

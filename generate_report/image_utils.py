@@ -1,10 +1,14 @@
 import io
 import logging
+import os
 
 import cv2
 import numpy as np
 
 from shared_code.storage_util import download_bytes
+
+DEFAULT_RESIZE_PERCENTAGE = 50
+DEFAULT_JPEG_QUALITY = 75
 
 
 def resize_by_percentage(img: np.ndarray, percentage: int) -> np.ndarray | None:
@@ -34,7 +38,12 @@ def resize_by_percentage(img: np.ndarray, percentage: int) -> np.ndarray | None:
     return resized
 
 
-def get_image(container: str, blob_name: str, resize_percentage: int = 50, jpeg_quality: int = 75) -> io.BytesIO | None:
+def get_image(
+    container: str,
+    blob_name: str,
+    resize_percentage: int = DEFAULT_RESIZE_PERCENTAGE,
+    jpeg_quality: int = DEFAULT_JPEG_QUALITY,
+) -> io.BytesIO | None:
     """Download, validate, resize, and encode a blob image into JPEG bytes."""
     try:
         img_bytes = download_bytes(container, blob_name)
@@ -77,3 +86,22 @@ def get_image(container: str, blob_name: str, resize_percentage: int = 50, jpeg_
     buf = io.BytesIO(encoded_jpeg.tobytes())
     buf.seek(0)
     return buf
+
+
+def get_unavailable_image(
+    resize_percentage: int | None = None,
+    jpeg_quality: int | None = None,
+) -> io.BytesIO | None:
+    """Return the fallback "unavailable" image stored in the report template container."""
+    container = os.getenv("TEMPLATES_CONTAINER", "report-templates")
+    blob_name = os.getenv("TEMPLATE_UNAVAILABLE_IMAGE", "unavailable_image.png")
+
+    resize_value = resize_percentage or DEFAULT_RESIZE_PERCENTAGE
+    jpeg_value = jpeg_quality or DEFAULT_JPEG_QUALITY
+
+    return get_image(
+        container,
+        blob_name,
+        resize_percentage=resize_value,
+        jpeg_quality=jpeg_value,
+    )

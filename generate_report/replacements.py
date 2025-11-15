@@ -6,7 +6,7 @@ from psycopg.rows import dict_row
 
 
 POSTGRES_URL = os.environ["POSTGRES_URL"]
-
+MISSING_VALUE = "--"
 
 def _bool_to_mark(value) -> str:
     """Return '✔' for True, '✘' for False, '' for None."""
@@ -15,7 +15,7 @@ def _bool_to_mark(value) -> str:
     return "✘"
 
 
-def get_report_replacements_and_image_paths(instance_id: str, user_comment: str):
+def get_report_replacements_and_image_paths(instance_id: str, user_comment: str, out_container: str, out_blob_name_pdf: str) -> tuple[dict, dict]:
     """
     Build the dictionaries 'replacements' and 'image_paths' using the row stored
     in vision.vision_pipeline_log for the given instance_id.
@@ -90,24 +90,17 @@ def get_report_replacements_and_image_paths(instance_id: str, user_comment: str)
             created_at_local.strftime("%H:%M:%S") if created_at_local else ""
         )
 
-        # Extract barcode payload fields safely
+        # Extract barcode payload fields safely (supports nested barcodeData)
         barcode_payload = row.get("barcode_payload") or {}
+        decoded_value = MISSING_VALUE
+        barcode_symbology = MISSING_VALUE
+
         if isinstance(barcode_payload, dict):
-            decoded_value = (
-                barcode_payload.get("decoded_value")
-                or barcode_payload.get("decodedValue")
-                or barcode_payload.get("value")
-                or ""
-            )
-            barcode_symbology = (
-                barcode_payload.get("symbology")
-                or barcode_payload.get("barcodeSymbology")
-                or barcode_payload.get("type")
-                or ""
-            )
-        else:
-            decoded_value = ""
-            barcode_symbology = ""
+            barcode_data = barcode_payload.get("barcodeData")
+            source = barcode_data if isinstance(barcode_data, dict) else barcode_payload
+
+            decoded_value = source.get("decodedValue") or MISSING_VALUE
+            barcode_symbology = source.get("barcodeSymbology") or MISSING_VALUE
 
         # Build replacements dictionary
         replacements = {
@@ -145,19 +138,19 @@ def get_report_replacements_and_image_paths(instance_id: str, user_comment: str)
             "{{processed_image_blob_name}}": row.get("processed_image_blob_name") or "",
             "{{ocr_overlay_container}}": row.get("ocr_overlay_container") or "",
             "{{ocr_overlay_blob_name}}": row.get("ocr_overlay_blob_name") or "",
-            "{{barcode_overlay_container}}": row.get("barcode_overlay_container") or "",
-            "{{barcode_overlay_blob_name}}": row.get("barcode_overlay_blob_name") or "",
-            "{{barcode_roi_container}}": row.get("barcode_roi_container") or "",
-            "{{barcode_roi_blob_name}}": row.get("barcode_roi_blob_name") or "",
+            "{{barcode_overlay_container}}": row.get("barcode_overlay_container") or MISSING_VALUE,
+            "{{barcode_overlay_blob_name}}": row.get("barcode_overlay_blob_name") or MISSING_VALUE,
+            "{{barcode_roi_container}}": row.get("barcode_roi_container") or MISSING_VALUE,
+            "{{barcode_roi_blob_name}}": row.get("barcode_roi_blob_name") or MISSING_VALUE,
             "{{validation_ocr_ok}}": _bool_to_mark(row.get("validation_lot_ok") and row.get("validation_exp_date_ok") and row.get("validation_pack_date_ok")),
             "{{validation_barcode_ok}}": _bool_to_mark(
                 row.get("validation_barcode_ok")
             ),
             "{{validation_summary}}": _bool_to_mark(row.get("validation_summary")),
             # As requested: hardcoded placeholders
-            "{{user_comment}}": "xxxxxxxxxxxx",
-            "{{report_container}}": "xxxxxxxxxxxx",
-            "{{report_blob_name}}": "xxxxxxxxxxxx",
+            "{{user_comment}}": user_comment,
+            "{{report_container}}": out_container,
+            "{{report_blob_name}}": out_blob_name_pdf,
         }
 
         # Hardcoded image parameters
