@@ -7,6 +7,8 @@ from docx.shared import RGBColor, Cm
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
+from generate_report.replacements import CHECK_MARK, CROSS_MARK
+
 from .image_utils import get_image, get_unavailable_image
 
 
@@ -14,9 +16,9 @@ def add_colored_text(paragraph: Paragraph, text: str) -> None:
     """Write text into a paragraph and color ✔ in green and ✘ in red."""
     for ch in text:
         run = paragraph.add_run(ch)
-        if ch == "✔":
+        if ch == CHECK_MARK:
             run.font.color.rgb = RGBColor(0, 150, 0)
-        elif ch == "✘":
+        elif ch == CROSS_MARK:
             run.font.color.rgb = RGBColor(200, 0, 0)
 
 

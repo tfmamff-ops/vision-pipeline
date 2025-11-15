@@ -7,12 +7,14 @@ from psycopg.rows import dict_row
 
 POSTGRES_URL = os.environ["POSTGRES_URL"]
 MISSING_VALUE = "⸺"
+CHECK_MARK = "✓"
+CROSS_MARK = "✗"
 
 def _bool_to_mark(value) -> str:
-    """Return '✔' for True, '✘' for False, '' for None."""
+    """Return '✓' for True, '✗' for False, '' for None."""
     if value is True:
-        return "✔"
-    return "✘"
+        return CHECK_MARK
+    return CROSS_MARK
 
 
 def get_report_replacements_and_image_paths(instance_id: str, user_comment: str, out_container: str, out_blob_name_pdf: str) -> tuple[dict, dict]:
