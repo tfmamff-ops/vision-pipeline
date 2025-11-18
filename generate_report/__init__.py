@@ -74,6 +74,24 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     # Build the data used to fill the DOCX template
     replacements, image_paths = get_report_replacements_and_image_paths(instance_id, user_comment, REPORT_CONTAINER, out_blob_name_pdf)
+
+    if not replacements or not image_paths:
+        logging.error("[generate_report] No replacements found for instance_id %s", instance_id)
+        return func.HttpResponse(
+            json.dumps(
+                {
+                    "ok": False,
+                    "error": {
+                        "code": "no_data",
+                        "message": "No data found for the given instance ID",
+                    },
+                }
+            ),
+            status_code=404,
+            mimetype=MIME_JSON,
+        )
+
+    # Generate the DOCX report
     docx_stream = generate_verification_report_bytes(template_bytes, replacements, image_paths)
 
     if docx_stream is None:
@@ -92,6 +110,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             mimetype=MIME_JSON,
         )
 
+    # Convert DOCX to PDF using Cloudmersive API
     pdf_bytes = convert_docx_to_pdf_cloudmersive(docx_stream, str(os.getenv("CLOUDMERSIVE_API_KEY")))
 
     if not pdf_bytes:
