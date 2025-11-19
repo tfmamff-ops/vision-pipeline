@@ -67,12 +67,19 @@ def _fetch_pipeline_row(instance_id: str) -> dict | None:
 
 def _format_created_strings(created_at) -> tuple[str, str]:
     """Return formatted date and time strings for the created_at column."""
-    created_at_local = created_at
-    if created_at is not None and getattr(created_at, "tzinfo", None) is not None:
-        created_at_local = created_at.astimezone()
+    if not created_at:
+        return "", ""
 
-    created_date_str = created_at_local.strftime("%d/%m/%Y") if created_at_local else ""
-    created_time_str = created_at_local.strftime("%H:%M:%S") if created_at_local else ""
+    created_date_str = created_at.strftime("%d/%m/%Y")
+    created_time_str = created_at.strftime("%H:%M:%S")
+
+    offset = created_at.utcoffset()
+    if offset is not None:
+        total_minutes = int(offset.total_seconds() // 60)
+        sign = "+" if total_minutes >= 0 else "-"
+        total_minutes = abs(total_minutes)
+        hours, minutes = divmod(total_minutes, 60)
+        created_time_str = f"{created_time_str} {sign}{hours:02d}:{minutes:02d}"
 
     return created_date_str, created_time_str
 
