@@ -63,7 +63,7 @@ def try_insert_image(paragraph: Paragraph, full_text: str, image_paths: dict) ->
                 container,
                 blob_name,
             )
-            final_img_source = get_unavailable_image(resize_pct, jpeg_quality)
+            final_img_source = get_unavailable_image()
 
         if final_img_source:
             target_width = width_cm
