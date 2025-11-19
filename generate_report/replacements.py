@@ -10,6 +10,9 @@ POSTGRES_URL = os.environ["POSTGRES_URL"]
 MISSING_VALUE = "—"
 CHECK_MARK = "✓"
 CROSS_MARK = "✗"
+RESIZE_PERCENTAGE = 40
+JPEG_QUALITY = 70
+WIDTH_CM = 10.0
 
 
 def _bool_to_mark(value) -> str:
@@ -193,43 +196,37 @@ def _build_replacements(
 
 def _build_image_paths(row: dict) -> dict:
     """Return the static image path definitions filled with row data."""
-    resize_percentage = 40
-    jpeg_quality = 70
-    width_cm_large = 10.0
-    width_cm_small = 7.0
 
     def _image_entry(container_key: str, blob_key: str, width_cm: float) -> dict:
         return {
             "container": row.get(container_key) or "",
             "blobName": row.get(blob_key) or "",
-            "resizePercentage": resize_percentage,
-            "jpegQuality": jpeg_quality,
+            "resizePercentage": RESIZE_PERCENTAGE,
+            "jpegQuality": JPEG_QUALITY,
             "widthCm": width_cm,
         }
 
     return {
-        "input_image": _image_entry(
-            "input_container", "input_blob_name", width_cm_large
-        ),
+        "input_image": _image_entry("input_container", "input_blob_name", WIDTH_CM),
         "processed_image": _image_entry(
             "processed_image_container",
             "processed_image_blob_name",
-            width_cm_large,
+            WIDTH_CM,
         ),
         "ocr_overlay_image": _image_entry(
             "ocr_overlay_container",
             "ocr_overlay_blob_name",
-            width_cm_large,
+            WIDTH_CM,
         ),
         "barcode_overlay_image": _image_entry(
             "barcode_overlay_container",
             "barcode_overlay_blob_name",
-            width_cm_small,
+            WIDTH_CM,
         ),
         "barcode_roi_image": _image_entry(
             "barcode_roi_container",
             "barcode_roi_blob_name",
-            width_cm_small,
+            WIDTH_CM,
         ),
     }
 

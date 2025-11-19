@@ -9,9 +9,6 @@ from shared_code.storage_util import download_bytes
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_RESIZE_PERCENTAGE = 50
-DEFAULT_JPEG_QUALITY = 75
-
 
 def resize_by_percentage(img: np.ndarray, percentage: int) -> np.ndarray | None:
     """Scale an image by a percentage and return the resized array."""
@@ -43,8 +40,8 @@ def resize_by_percentage(img: np.ndarray, percentage: int) -> np.ndarray | None:
 def get_image(
     container: str,
     blob_name: str,
-    resize_percentage: int = DEFAULT_RESIZE_PERCENTAGE,
-    jpeg_quality: int = DEFAULT_JPEG_QUALITY,
+    resize_percentage: int,
+    jpeg_quality: int,
 ) -> io.BytesIO | None:
     """Download, validate, resize, and encode a blob image into JPEG bytes."""
     try:
