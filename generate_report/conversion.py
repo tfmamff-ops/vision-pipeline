@@ -1,12 +1,18 @@
 import io
 import logging
 import os
+
 import requests
 
-def convert_docx_to_pdf_cloudmersive(docx_bytes: io.BytesIO, api_key: str) -> bytes | None:
+logger = logging.getLogger(__name__)
+
+
+def convert_docx_to_pdf_cloudmersive(
+    docx_bytes: io.BytesIO, api_key: str
+) -> bytes | None:
     """Send a DOCX to Cloudmersive and return the PDF bytes."""
     payload = docx_bytes.getvalue()
-    logging.info("[generate_report] Cloudmersive upload DOCX size: %d bytes", len(payload))
+    logger.info("Cloudmersive upload DOCX size: %d bytes", len(payload))
 
     headers = {"Apikey": api_key}
     files = {
@@ -18,16 +24,18 @@ def convert_docx_to_pdf_cloudmersive(docx_bytes: io.BytesIO, api_key: str) -> by
     }
 
     try:
-        response = requests.post(str(os.getenv("CLOUDMERSIVE_URL")), headers=headers, files=files, timeout=60)
+        response = requests.post(
+            str(os.getenv("CLOUDMERSIVE_URL")), headers=headers, files=files, timeout=60
+        )
     except requests.RequestException as exc:
-        logging.error("[generate_report] Cloudmersive network error: %s", exc)
+        logger.error("Cloudmersive network error: %s", exc)
         return None
 
     if response.status_code == 200:
         return response.content
 
-    logging.error(
-        "[generate_report] Cloudmersive error %s. Response: %s",
+    logger.error(
+        "Cloudmersive error %s. Response: %s",
         response.status_code,
         response.text[:300],
     )

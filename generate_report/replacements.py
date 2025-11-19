@@ -1,14 +1,16 @@
-import os
 import logging
+import os
 
 import psycopg  # psycopg v3
 from psycopg.rows import dict_row
 
+logger = logging.getLogger(__name__)
 
 POSTGRES_URL = os.environ["POSTGRES_URL"]
 MISSING_VALUE = "—"
 CHECK_MARK = "✓"
 CROSS_MARK = "✗"
+
 
 def _bool_to_mark(value) -> str:
     """Return '✓' for True, '✗' for False, '' for None."""
@@ -69,12 +71,8 @@ def _format_created_strings(created_at) -> tuple[str, str]:
     if created_at is not None and getattr(created_at, "tzinfo", None) is not None:
         created_at_local = created_at.astimezone()
 
-    created_date_str = (
-        created_at_local.strftime("%d/%m/%Y") if created_at_local else ""
-    )
-    created_time_str = (
-        created_at_local.strftime("%H:%M:%S") if created_at_local else ""
-    )
+    created_date_str = created_at_local.strftime("%d/%m/%Y") if created_at_local else ""
+    created_time_str = created_at_local.strftime("%H:%M:%S") if created_at_local else ""
 
     return created_date_str, created_time_str
 
@@ -93,7 +91,9 @@ def _extract_barcode_fields(payload) -> tuple[str, str]:
     return decoded_value, barcode_symbology
 
 
-def _string_fields(row: dict, mapping: list[tuple[str, str]], default: str = "") -> dict:
+def _string_fields(
+    row: dict, mapping: list[tuple[str, str]], default: str = ""
+) -> dict:
     return {placeholder: row.get(key) or default for placeholder, key in mapping}
 
 
@@ -179,7 +179,10 @@ def _build_replacements(
                 ("{{validation_lot_ok}}", "validation_lot_ok"),
                 ("{{validation_exp_date_ok}}", "validation_exp_date_ok"),
                 ("{{validation_pack_date_ok}}", "validation_pack_date_ok"),
-                ("{{validation_barcode_detected_ok}}", "validation_barcode_detected_ok"),
+                (
+                    "{{validation_barcode_detected_ok}}",
+                    "validation_barcode_detected_ok",
+                ),
                 ("{{validation_barcode_legible_ok}}", "validation_barcode_legible_ok"),
             ],
         )
@@ -205,7 +208,9 @@ def _build_image_paths(row: dict) -> dict:
         }
 
     return {
-        "input_image": _image_entry("input_container", "input_blob_name", width_cm_large),
+        "input_image": _image_entry(
+            "input_container", "input_blob_name", width_cm_large
+        ),
         "processed_image": _image_entry(
             "processed_image_container",
             "processed_image_blob_name",
@@ -229,7 +234,9 @@ def _build_image_paths(row: dict) -> dict:
     }
 
 
-def get_report_replacements_and_image_paths(instance_id: str, user_comment: str, out_container: str, out_blob_name_pdf: str) -> tuple[dict, dict]:
+def get_report_replacements_and_image_paths(
+    instance_id: str, user_comment: str, out_container: str, out_blob_name_pdf: str
+) -> tuple[dict, dict]:
     """
     Build the dictionaries 'replacements' and 'image_paths' using the row stored
     in vision.vision_pipeline_log for the given instance_id.
@@ -240,16 +247,16 @@ def get_report_replacements_and_image_paths(instance_id: str, user_comment: str,
     try:
         row = _fetch_pipeline_row(instance_id)
     except Exception as exc:
-        logging.error(
-            "[get_report_replacements_and_image_paths] error for instance_id %s: %s",
+        logger.error(
+            "error for instance_id %s: %s",
             instance_id,
             exc,
         )
         return {}, {}
 
     if row is None:
-        logging.error(
-            "[get_report_replacements_and_image_paths] instance_id %s not found in vision_pipeline_log",
+        logger.error(
+            "instance_id %s not found in vision_pipeline_log",
             instance_id,
         )
         return {}, {}
@@ -271,7 +278,7 @@ def get_report_replacements_and_image_paths(instance_id: str, user_comment: str,
     )
     image_paths = _build_image_paths(row)
 
-    logging.info("********************* replacements: %s", replacements)
-    logging.info("********************* image_paths: %s", image_paths)
+    logger.info("replacements: %s", replacements)
+    logger.info("image_paths: %s", image_paths)
 
     return replacements, image_paths

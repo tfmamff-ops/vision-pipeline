@@ -1,11 +1,15 @@
 import uuid
+
 import cv2
 import numpy as np
+
 from shared_code.storage_util import download_bytes, upload_bytes
+
 
 def _var_laplacian(img_gray: np.ndarray) -> float:
     """Calculates the variance of the Laplacian to measure the blur level."""
     return cv2.Laplacian(img_gray, cv2.CV_64F).var()
+
 
 def main(ref: dict) -> dict:
     """
@@ -43,7 +47,7 @@ def main(ref: dict) -> dict:
     l_channel_f32 = l_channel.astype(np.float32)
     blurred_l = cv2.GaussianBlur(l_channel_f32, (0, 0), 2.5)
     sharpened_l = cv2.addWeighted(l_channel_f32, 1.0 + amount, blurred_l, -amount, 0)
-    
+
     # Apply CLAHE to improve local contrast in the lightness channel
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     sharpened_l_u8 = np.clip(sharpened_l, 0, 255).astype(np.uint8)

@@ -3,7 +3,7 @@ import logging
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.shared import RGBColor, Cm
+from docx.shared import Cm, RGBColor
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
@@ -11,15 +11,21 @@ from generate_report.replacements import CHECK_MARK, CROSS_MARK
 
 from .image_utils import get_image, get_unavailable_image
 
+logger = logging.getLogger(__name__)
+
+GREEN = RGBColor(0, 150, 0)
+RED = RGBColor(200, 0, 0)
+
 
 def add_colored_text(paragraph: Paragraph, text: str) -> None:
     """Write text into a paragraph and color ✔ in green and ✘ in red."""
+
     for ch in text:
         run = paragraph.add_run(ch)
         if ch == CHECK_MARK:
-            run.font.color.rgb = RGBColor(0, 150, 0)
+            run.font.color.rgb = GREEN
         elif ch == CROSS_MARK:
-            run.font.color.rgb = RGBColor(200, 0, 0)
+            run.font.color.rgb = RED
 
 
 def clear_paragraph_runs(paragraph: Paragraph) -> None:
@@ -51,8 +57,8 @@ def try_insert_image(paragraph: Paragraph, full_text: str, image_paths: dict) ->
         )
 
         if not final_img_source:
-            logging.warning(
-                "[generate_report] Missing image for placeholder '%s' (container=%r, blobName=%r); using fallback",
+            logger.warning(
+                "Missing image for placeholder '%s' (container=%r, blobName=%r); using fallback",
                 img_placeholder,
                 container,
                 blob_name,
@@ -66,8 +72,8 @@ def try_insert_image(paragraph: Paragraph, full_text: str, image_paths: dict) ->
             paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
             return True
 
-        logging.error(
-            "[generate_report] Unable to insert fallback image for placeholder '%s'",
+        logger.error(
+            "Unable to insert fallback image for placeholder '%s'",
             img_placeholder,
         )
         return False
@@ -123,7 +129,7 @@ def generate_verification_report_bytes(
         buf = io.BytesIO(template)
         document = Document(buf)
     except Exception:
-        logging.exception("[generate_report] Error loading DOCX template")
+        logger.exception("Error loading DOCX template")
         return None
 
     for paragraph in document.paragraphs:

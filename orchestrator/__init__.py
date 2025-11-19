@@ -1,5 +1,6 @@
 import azure.durable_functions as df
 
+
 def orchestrator_function(context: df.DurableOrchestrationContext):
     """
     Accepts JSON with blob reference, expected data, and requester context:
@@ -33,19 +34,19 @@ def orchestrator_function(context: df.DurableOrchestrationContext):
 
     ref_focus = yield context.call_activity("enhance_focus", ref_in)
     context.set_custom_status({"stage": "enhance_focus_done"})
-    ref_cb    = yield context.call_activity("adjust_contrast_brightness", ref_focus)
+    ref_cb = yield context.call_activity("adjust_contrast_brightness", ref_focus)
     context.set_custom_status({"stage": "adjust_contrast_brightness_done"})
-    ref_bw    = yield context.call_activity("to_grayscale", ref_cb)
+    ref_bw = yield context.call_activity("to_grayscale", ref_cb)
     context.set_custom_status({"stage": "to_grayscale_done"})
-    bc_out    = yield context.call_activity("analyze_barcode", ref_bw)
+    bc_out = yield context.call_activity("analyze_barcode", ref_bw)
     context.set_custom_status({"stage": "analyze_barcode_done"})
-    ocr_out   = yield context.call_activity("run_ocr", ref_bw)
+    ocr_out = yield context.call_activity("run_ocr", ref_bw)
     context.set_custom_status({"stage": "run_ocr_done"})
 
     payload = {
         "ocr": ocr_out,
         "barcode": bc_out,
-        "expectedData": ref_in["expectedData"]
+        "expectedData": ref_in["expectedData"],
     }
 
     val_out = yield context.call_activity("validate_extracted_data", payload)
@@ -63,7 +64,7 @@ def orchestrator_function(context: df.DurableOrchestrationContext):
         "instanceId": context.instance_id,
         "createdTime": context.current_utc_datetime.isoformat(),  # determinista
         "input": ref_in,
-        "output": output
+        "output": output,
     }
 
     # Persist run with retries
@@ -76,5 +77,6 @@ def orchestrator_function(context: df.DurableOrchestrationContext):
     context.set_custom_status({"stage": "completed"})
 
     return run_doc["output"]
+
 
 main = df.Orchestrator.create(orchestrator_function)

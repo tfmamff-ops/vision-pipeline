@@ -1,7 +1,11 @@
-import logging
 import json
-import azure.functions as func
+import logging
+
 import azure.durable_functions as df
+import azure.functions as func
+
+logger = logging.getLogger(__name__)
+
 
 async def main(req: func.HttpRequest, starter: str) -> func.HttpResponse:
     """
@@ -35,19 +39,27 @@ async def main(req: func.HttpRequest, starter: str) -> func.HttpResponse:
     client = df.DurableOrchestrationClient(starter)
     try:
         payload = req.get_json()
-        
+
         # Log the full received JSON
-        logging.info("[http_start] JSON received (raw): %s", req.get_body().decode('utf-8'))
-        logging.info("[http_start] Parsed JSON (payload): %s", json.dumps(payload, indent=2, ensure_ascii=False))
-        
+        logger.info("JSON received (raw): %s", req.get_body().decode("utf-8"))
+        logger.info(
+            "Parsed JSON (payload): %s",
+            json.dumps(payload, indent=2, ensure_ascii=False),
+        )
+
         container = payload.get("container")
         blob_name = payload.get("blobName")
         expected_data = payload.get("expectedData", {})
         request_context = payload.get("requestContext")
-        
-        logging.info("[http_start] container=%s, blobName=%s, expectedData=%s, hasRequestContext=%s", 
-                     container, blob_name, bool(expected_data), bool(request_context))
-        
+
+        logger.info(
+            "container=%s, blobName=%s, expectedData=%s, hasRequestContext=%s",
+            container,
+            blob_name,
+            bool(expected_data),
+            bool(request_context),
+        )
+
         # Basic validations
         missing = []
         if container != "input":
@@ -69,24 +81,32 @@ async def main(req: func.HttpRequest, starter: str) -> func.HttpResponse:
             msg = {
                 "error": "Bad Request",
                 "missing": missing,
-                "hint": "Expected container='input', blobName, expectedData{prodCode, prodDesc, lot, expDate, packDate}, requestContext.user.id"
+                "hint": "Expected container='input', blobName, expectedData{prodCode, prodDesc, lot, expDate, packDate}, requestContext.user.id",
             }
-            logging.warning("[http_start] Validation failed: %s", msg)
+            logger.warning("Validation failed: %s", msg)
             response = func.HttpResponse(
                 json.dumps(msg, ensure_ascii=False),
                 status_code=400,
-                mimetype="application/json"
+                mimetype="application/json",
             )
-            logging.info("[http_start] Response status=%s, body=%s", response.status_code, response.get_body().decode('utf-8'))
+            logger.info(
+                "Response status=%s, body=%s",
+                response.status_code,
+                response.get_body().decode("utf-8"),
+            )
             return response
     except Exception as e:
-        logging.exception("[http_start] Error processing JSON - returning 400")
+        logger.exception("Error processing JSON - returning 400")
         response = func.HttpResponse(
             json.dumps({"error": "Invalid JSON", "detail": str(e)}, ensure_ascii=False),
             status_code=400,
-            mimetype="application/json"
+            mimetype="application/json",
         )
-        logging.info("[http_start] Response status=%s, body=%s", response.status_code, response.get_body().decode('utf-8'))
+        logger.info(
+            "Response status=%s, body=%s",
+            response.status_code,
+            response.get_body().decode("utf-8"),
+        )
         return response
 
     # Forward full context to the orchestrator (keeps strict identity requirements)
@@ -94,24 +114,31 @@ async def main(req: func.HttpRequest, starter: str) -> func.HttpResponse:
         "container": container,
         "blobName": blob_name,
         "expectedData": expected_data,
-        "requestContext": request_context
+        "requestContext": request_context,
     }
     instance_id = await client.start_new("orchestrator", None, orch_input)
-    logging.info("[http_start] Orchestrator started with instance_id=%s", instance_id)
-    
+    logger.info("Orchestrator started with instance_id=%s", instance_id)
+
     response = client.create_check_status_response(req, instance_id)
-    logging.info("[http_start] Response status=%s", response.status_code)
+    logger.info("Response status=%s", response.status_code)
 
     # Read body once
     _body_bytes = response.get_body()
-    _body_text = _body_bytes.decode('utf-8') if isinstance(_body_bytes, (bytes, bytearray)) else str(_body_bytes)
-    logging.info("[http_start] Response body (raw): %s", _body_text)
+    _body_text = (
+        _body_bytes.decode("utf-8")
+        if isinstance(_body_bytes, (bytes, bytearray))
+        else str(_body_bytes)
+    )
+    logger.info("Response body (raw): %s", _body_text)
 
     # Pretty-print JSON if valid
     try:
         _body_json = json.loads(_body_text)
-        logging.info("[http_start] Response body (json): %s", json.dumps(_body_json, indent=2, ensure_ascii=False))
+        logger.info(
+            "Response body (json): %s",
+            json.dumps(_body_json, indent=2, ensure_ascii=False),
+        )
     except Exception as e:
         # Not JSON; keep raw only
-        logging.debug("[http_start] Response body is not valid JSON: %s", e)
+        logger.debug("Response body is not valid JSON: %s", e)
     return response

@@ -1,8 +1,12 @@
 import os
+
 import psycopg  # psycopg v3
 from psycopg.types.json import Jsonb
 
-POSTGRES_URL = os.environ["POSTGRES_URL"]  # e.g., "postgresql://user:pass@host:5432/dbname"
+POSTGRES_URL = os.environ[
+    "POSTGRES_URL"
+]  # e.g., "postgresql://user:pass@host:5432/dbname"
+
 
 def main(ref: dict) -> dict:
     """
@@ -27,10 +31,10 @@ def main(ref: dict) -> dict:
     req_client = req_ctx.get("client", {}) or {}
 
     # Blob extras
-    proc_blob = (out.get("processedImageBlob") or {})
-    ocr_overlay = (out.get("ocrOverlayBlob") or {})
-    bc_overlay = (barcode.get("barcodeOverlayBlob") or {})
-    bc_roi = (barcode.get("barcodeRoiBlob") or {})
+    proc_blob = out.get("processedImageBlob") or {}
+    ocr_overlay = out.get("ocrOverlayBlob") or {}
+    bc_overlay = barcode.get("barcodeOverlayBlob") or {}
+    bc_roi = barcode.get("barcodeRoiBlob") or {}
 
     # UPSERT
     sql = """
@@ -100,53 +104,44 @@ def main(ref: dict) -> dict:
     """
 
     params = {
-      "instance_id": instance_id,
-      "created_at": created_time,
-
-      # Who initiated the run
-      "requested_by_user_id": req_user.get("id"),
-      "requested_by_user_name": req_user.get("name"),
-      "requested_by_user_role": req_user.get("role"),
-      "requested_by_user_email": req_user.get("email"),
-      "client_app_version": req_client.get("appVersion"),
-      "client_ip": req_client.get("ip"),
-      "client_user_agent": req_client.get("userAgent"),
-      "request_context_payload": Jsonb(req_ctx) if req_ctx else None,
-
-      "input_container": input_obj.get("container"),
-      "input_blob_name": input_obj.get("blobName"),
-
-      # Expected product data
-      "expected_prod_code": expected.get("prodCode"),
-      "expected_prod_desc": expected.get("prodDesc"),
-      "expected_lot": expected.get("lot"),
-      "expected_exp_date": expected.get("expDate"),
-      "expected_pack_date": expected.get("packDate"),
-
-      # Validation flags
-      "validation_lot_ok": val.get("lotOk"),
-      "validation_exp_date_ok": val.get("expDateOk"),
-      "validation_pack_date_ok": val.get("packDateOk"),
-      "validation_barcode_detected_ok": val.get("barcodeDetectedOk"),
-      "validation_barcode_legible_ok": val.get("barcodeLegibleOk"),
-      "validation_barcode_ok": val.get("barcodeOk"),
-      "validation_summary": val.get("validationSummary"),
-
-      "processed_image_container": proc_blob.get("container"),
-      "processed_image_blob_name": proc_blob.get("blobName"),
-
-      "ocr_overlay_container": ocr_overlay.get("container"),
-      "ocr_overlay_blob_name": ocr_overlay.get("blobName"),
-
-      "barcode_overlay_container": bc_overlay.get("container"),
-      "barcode_overlay_blob_name": bc_overlay.get("blobName"),
-
-      "barcode_roi_container": bc_roi.get("container"),
-      "barcode_roi_blob_name": bc_roi.get("blobName"),
-
-      # Wrap dicts in Jsonb for psycopg3 to convert to PostgreSQL JSONB
-      "ocr_payload": Jsonb(ocr) if ocr else None,
-      "barcode_payload": Jsonb(barcode) if barcode else None,
+        "instance_id": instance_id,
+        "created_at": created_time,
+        # Who initiated the run
+        "requested_by_user_id": req_user.get("id"),
+        "requested_by_user_name": req_user.get("name"),
+        "requested_by_user_role": req_user.get("role"),
+        "requested_by_user_email": req_user.get("email"),
+        "client_app_version": req_client.get("appVersion"),
+        "client_ip": req_client.get("ip"),
+        "client_user_agent": req_client.get("userAgent"),
+        "request_context_payload": Jsonb(req_ctx) if req_ctx else None,
+        "input_container": input_obj.get("container"),
+        "input_blob_name": input_obj.get("blobName"),
+        # Expected product data
+        "expected_prod_code": expected.get("prodCode"),
+        "expected_prod_desc": expected.get("prodDesc"),
+        "expected_lot": expected.get("lot"),
+        "expected_exp_date": expected.get("expDate"),
+        "expected_pack_date": expected.get("packDate"),
+        # Validation flags
+        "validation_lot_ok": val.get("lotOk"),
+        "validation_exp_date_ok": val.get("expDateOk"),
+        "validation_pack_date_ok": val.get("packDateOk"),
+        "validation_barcode_detected_ok": val.get("barcodeDetectedOk"),
+        "validation_barcode_legible_ok": val.get("barcodeLegibleOk"),
+        "validation_barcode_ok": val.get("barcodeOk"),
+        "validation_summary": val.get("validationSummary"),
+        "processed_image_container": proc_blob.get("container"),
+        "processed_image_blob_name": proc_blob.get("blobName"),
+        "ocr_overlay_container": ocr_overlay.get("container"),
+        "ocr_overlay_blob_name": ocr_overlay.get("blobName"),
+        "barcode_overlay_container": bc_overlay.get("container"),
+        "barcode_overlay_blob_name": bc_overlay.get("blobName"),
+        "barcode_roi_container": bc_roi.get("container"),
+        "barcode_roi_blob_name": bc_roi.get("blobName"),
+        # Wrap dicts in Jsonb for psycopg3 to convert to PostgreSQL JSONB
+        "ocr_payload": Jsonb(ocr) if ocr else None,
+        "barcode_payload": Jsonb(barcode) if barcode else None,
     }
 
     with psycopg.connect(POSTGRES_URL) as conn:

@@ -1,18 +1,22 @@
 import os
 import uuid
+
 import cv2
 import numpy as np
+
 from shared_code.storage_util import download_bytes, upload_bytes
 
 # clipLimit: Threshold to limit contrast. Higher values give more contrast.
 # tileGridSize: Size of the region for histogram analysis.
 _DEF_CLIP_LIMIT = float(os.getenv("ADJ_CLAHE_CLIP", "2.0"))
-_DEF_TILE_SIZE  = int(os.getenv("ADJ_CLAHE_TILE", "8"))
+_DEF_TILE_SIZE = int(os.getenv("ADJ_CLAHE_TILE", "8"))
+
 
 def _bytes_to_img(b: bytes) -> np.ndarray:
     """Decodes a byte buffer to an OpenCV image."""
     arr = np.frombuffer(b, dtype=np.uint8)
     return cv2.imdecode(arr, cv2.IMREAD_COLOR)
+
 
 def _img_to_png_bytes(img: np.ndarray) -> bytes:
     """Encodes an OpenCV image to a PNG byte buffer."""
@@ -20,6 +24,7 @@ def _img_to_png_bytes(img: np.ndarray) -> bytes:
     if not ok:
         raise RuntimeError("Failed to encode PNG")
     return buf.tobytes()
+
 
 def main(ref: dict) -> dict:
     """
