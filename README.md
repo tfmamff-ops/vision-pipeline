@@ -9,6 +9,7 @@ Este proyecto implementa una canalización de análisis de imágenes farmacéuti
 - **Funciones HTTP**
   - `http_start`: expone el punto de entrada REST que valida la solicitud, inicia la orquestación y devuelve las URL de seguimiento generadas por Durable Functions.
   - `get_sas`: genera SAS temporales para subir imágenes al contenedor `input` o leer resultados desde `output` o `erp`.
+  - `generate_report`: recibe el `instanceId` procesado, arma un DOCX con las imágenes y métricas de la corrida y lo convierte a PDF listo para descargar.
 - **Orquestación Durable**
   - `orchestrator`: coordina las actividades en serie, controla el estado personalizado y finalmente guarda la corrida en PostgreSQL.
 - **Actividades**
@@ -19,6 +20,7 @@ Este proyecto implementa una canalización de análisis de imágenes farmacéuti
   - `run_ocr`: envía la imagen al servicio Azure Computer Vision, genera una copia final y un overlay con las regiones leídas.
   - `validate_extracted_data`: compara OCR y código de barras contra los valores esperados, con reglas tolerantes y un centinela `N/A` para omitir campos.
   - `persist_run`: consolida la ejecución en la tabla `vision_pipeline_log` sobre PostgreSQL, incluyendo metadatos de usuario, cliente y blobs resultantes.
+  - `generate_report`: actividad HTTP independiente que reutiliza la información guardada para producir reportes finales en DOCX/PDF.
 - **Código compartido**
   - `shared_code/storage_util`: envuelve operaciones de Azure Blob Storage para descargar y subir bytes con `BlobServiceClient`.
 
@@ -51,6 +53,10 @@ Las funciones se describen en los archivos `function.json` correspondientes para
 | `AZURE_OCR_ENDPOINT`, `AZURE_OCR_KEY` | Configuración del servicio Azure Computer Vision utilizado por `run_ocr`. |
 | `POSTGRES_URL` | Cadena de conexión a PostgreSQL consumida por `persist_run`. |
 | `SENTINEL_SKIP_VALIDATION` | Centinela para evitar validación de campos en `validate_extracted_data`. |
+| `TEMPLATES_CONTAINER` | Contenedor donde residen las plantillas DOCX y la imagen de fallback para reportes. |
+| `TEMPLATE_ACCEPT` / `TEMPLATE_REJECT` | Plantillas DOCX utilizadas cuando el resultado general es aceptado o rechazado. |
+| `TEMPLATE_UNAVAILABLE_IMAGE` | Imagen reemplazo que se inserta cuando falta alguna captura en el reporte. |
+| `CLOUDMERSIVE_URL`, `CLOUDMERSIVE_API_KEY` | Endpoint y API key del servicio Cloudmersive usado para convertir DOCX→PDF. |
 
 Las variables adicionales requeridas por Azure Functions (por ejemplo, claves de función) se gestionan mediante `local.settings.json` o las configuraciones de la Function App.
 
@@ -77,7 +83,7 @@ Las variables adicionales requeridas por Azure Functions (por ejemplo, claves de
    func start
    ```
 
-5. Usar herramientas como `curl` o `Postman` para invocar `http://localhost:7071/api/process` siguiendo el payload de ejemplo.
+5. Usar herramientas como `curl` o `Postman` para invocar `http://localhost:7071/api/process` siguiendo el payload de ejemplo. Para generar reportes completos, llamar luego a `http://localhost:7071/api/generate_report` enviando el `instanceId` y comentarios opcionales.
 
 > **Nota:** `run_ocr` realiza llamadas reales a Azure Computer Vision; para pruebas locales sin acceso al servicio se puede simular la respuesta modificando la actividad.
 
@@ -116,6 +122,7 @@ El archivo [`scripts/resp.json`](./scripts/resp.json) es un ejemplo de salida se
 ├── orchestrator/                  # Función Durable que coordina el pipeline
 ├── persist_run/                   # Actividad que persiste resultados en PostgreSQL
 ├── run_ocr/                       # Actividad que consume Azure Computer Vision
+├── generate_report/               # Función HTTP que arma el DOCX y lo convierte a PDF
 ├── shared_code/                   # Utilitarios compartidos (Blob Storage)
 ├── to_grayscale/                  # Actividad de conversión a escala de grises
 ├── scripts/                       # Scripts de despliegue, pruebas y recursos de ejemplo
