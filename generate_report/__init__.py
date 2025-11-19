@@ -4,6 +4,7 @@ import os
 import uuid
 
 import azure.functions as func
+import bleach
 
 from shared_code.storage_util import download_bytes, upload_bytes
 
@@ -40,7 +41,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
 
         instance_id = payload.get("instanceId")
-        user_comment = payload.get("userComment")
+        # Sanitize the user comment using bleach
+        safe_user_comment = bleach.clean(payload.get("userComment"))
         accepted = payload.get("accepted")
     except Exception:
         logger.exception("Error processing JSON - returning 400")
@@ -88,7 +90,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     # Build the data used to fill the DOCX template
     replacements, image_paths = get_report_replacements_and_image_paths(
-        instance_id, user_comment, REPORT_CONTAINER, out_blob_name_pdf
+        instance_id, safe_user_comment, REPORT_CONTAINER, out_blob_name_pdf
     )
 
     if not replacements or not image_paths:
@@ -165,12 +167,12 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
         # Insert a log entry for the generated report
         insert_report_log(
-            instance_id=instance_id,
-            user_comment=user_comment,
-            accepted=accepted,
-            container=REPORT_CONTAINER,
-            pdf_blob_name=out_blob_name_pdf,
-            docx_blob_name=out_blob_name_docx,
+            instance_id,
+            safe_user_comment,
+            accepted,
+            REPORT_CONTAINER,
+            out_blob_name_pdf,
+            out_blob_name_docx,
         )
 
     except Exception as exc:
