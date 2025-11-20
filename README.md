@@ -54,8 +54,8 @@ Las funciones se describen en los archivos `function.json` correspondientes para
 | `POSTGRES_URL` | Cadena de conexión a PostgreSQL consumida por `persist_run`. |
 | `SENTINEL_SKIP_VALIDATION` | Centinela para evitar validación de campos en `validate_extracted_data`. |
 | `TEMPLATES_CONTAINER` | Contenedor donde residen las plantillas DOCX y la imagen de fallback para reportes. |
-| `TEMPLATE_ACCEPT` / `TEMPLATE_REJECT` | Plantillas DOCX utilizadas cuando el resultado general es aceptado o rechazado. |
-| `TEMPLATE_UNAVAILABLE_IMAGE` | Imagen reemplazo que se inserta cuando falta alguna captura en el reporte. |
+| `TEMPLATE_ACCEPTED` / `TEMPLATE_REJECTED` | Plantillas DOCX utilizadas cuando el resultado general es aceptado o rechazado. |
+| `TEMPLATE_IMAGE_UNAVAILABLE` | Imagen reemplazo que se inserta cuando falta alguna captura en el reporte. |
 | `CLOUDMERSIVE_URL`, `CLOUDMERSIVE_API_KEY` | Endpoint y API key del servicio Cloudmersive usado para convertir DOCX→PDF. |
 
 Las variables adicionales requeridas por Azure Functions (por ejemplo, claves de función) se gestionan mediante `local.settings.json` o las configuraciones de la Function App.

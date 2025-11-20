@@ -92,7 +92,7 @@ def get_unavailable_image(
     jpeg_quality: int = 100,
 ) -> io.BytesIO | None:
     """Return the fallback 'unavailable' image stored in the report template container."""
-    container = os.getenv("TEMPLATES_CONTAINER", "report-templates")
-    blob_name = os.getenv("TEMPLATE_UNAVAILABLE_IMAGE", "unavailable_image.png")
+    container = os.getenv("TEMPLATES_CONTAINER")
+    blob_name = os.getenv("TEMPLATE_IMAGE_UNAVAILABLE")
 
     return get_image(container, blob_name, resize_percentage, jpeg_quality)

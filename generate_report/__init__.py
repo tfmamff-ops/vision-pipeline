@@ -63,9 +63,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     try:
         template_bytes = download_bytes(
             str(os.getenv("TEMPLATES_CONTAINER")),
-            str(os.getenv("TEMPLATE_ACCEPT"))
+            str(os.getenv("TEMPLATE_ACCEPTED"))
             if accepted
-            else str(os.getenv("TEMPLATE_REJECT")),
+            else str(os.getenv("TEMPLATE_REJECTED")),
         )
     except Exception as exc:
         logger.exception("Failed to download template: %s", exc)
