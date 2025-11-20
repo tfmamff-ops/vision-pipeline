@@ -49,12 +49,7 @@ def try_insert_image(paragraph: Paragraph, full_text: str, image_paths: dict) ->
         jpeg_quality = img_info.get("jpegQuality")
         width_cm = img_info.get("widthCm")
 
-        final_img_source = get_image(
-            container,
-            blob_name,
-            resize_percentage=resize_pct,
-            jpeg_quality=jpeg_quality,
-        )
+        final_img_source = get_image(container, blob_name, resize_pct, jpeg_quality)
 
         if not final_img_source:
             logger.warning(
